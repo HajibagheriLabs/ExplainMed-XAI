@@ -157,19 +157,24 @@ def main() -> None:
         results += shuffled_modality_runs(model, inputs, rows["test"], truth, cfg, seed)
     fusion_runs = pd.DataFrame(results)
 
-    baseline_runs = pd.read_csv(cfg.paths.reports_dir / "baselines_runs.csv")
-    baseline_runs = baseline_runs[
-        baseline_runs["model"].isin(["image_only", "text_only"])
-    ]
-    runs = pd.concat([baseline_runs, fusion_runs], ignore_index=True)
     columns = metric_names(CLASSES)
-    by_seed = runs.set_index(["model", "seed"])[columns]
+    baseline_runs = pd.read_csv(cfg.paths.reports_dir / "baselines_runs.csv")
+    image_runs = baseline_runs[baseline_runs["model"] == "image_only"]
     # fusion and image-only share seeds, so batch order and augmentation are paired too
-    gain = (by_seed.loc["fusion"] - by_seed.loc["image_only"]).dropna()
-    if len(gain) != len(by_seed.loc["fusion"]):
+    gain = (
+        fusion_runs[fusion_runs["model"] == "fusion"].set_index("seed")[columns]
+        - image_runs.set_index("seed")[columns]
+    ).dropna()
+    if len(gain) != cfg.train.repeats:
         raise ValueError("fusion and image-only runs do not share the same seeds")
     gain = gain.reset_index().assign(model="fusion_minus_image_only")
-    summary = summarise_runs(pd.concat([runs, gain]), columns).loc[SUMMARY_ORDER]
+    fusion_summary = summarise_runs(pd.concat([fusion_runs, gain]), columns)
+    # baseline rows come from the baseline report itself so the two tables agree exactly
+    baseline_summary = pd.read_csv(cfg.paths.reports_dir / "baselines.csv", index_col=0)
+    baseline_summary = baseline_summary.loc[
+        ["image_only", "text_only"], fusion_summary.columns
+    ]
+    summary = pd.concat([baseline_summary, fusion_summary]).loc[SUMMARY_ORDER]
 
     baseline_dir = cfg.paths.runs_dir / "baselines" / "image_only"
     matrices = {
