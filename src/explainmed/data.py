@@ -118,7 +118,7 @@ def load_splits(cfg: Config) -> dict[str, list[str]]:
     found = {key: payload.get(key) for key in expected}
     if found != expected:
         raise ValueError(
-            f"{cfg.paths.splits_file} was generated with {found}, config says "
+            f"{cfg.paths.splits_file} was written for {found}, config says "
             f"{expected}; regenerate it with `make data`"
         )
     return {name: payload[name] for name in SPLITS}
