@@ -24,6 +24,8 @@ CLASS_NAMES = {
     "vasc": "vascular lesion",
 }
 CLASSES = tuple(CLASS_NAMES)
+# malignant or premalignant; calling one of these benign is the costly error
+MALIGNANT = ("akiec", "bcc", "mel")
 SPLITS = ("train", "val", "test")
 METADATA_COLUMNS = (
     "lesion_id",

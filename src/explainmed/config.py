@@ -196,6 +196,20 @@ class SanityConfig:
 
 
 @dataclass(frozen=True)
+class MisleadingConfig:
+    confidence_threshold: float
+    cases: int
+
+    def __post_init__(self) -> None:
+        _require_positive("misleading", {"cases": self.cases})
+        if not 0.0 < self.confidence_threshold < 1.0:
+            raise ValueError(
+                "misleading.confidence_threshold must be in (0, 1), "
+                f"got {self.confidence_threshold}"
+            )
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     device: str
@@ -208,6 +222,7 @@ class Config:
     explain: ExplainConfig
     faithfulness: FaithfulnessConfig
     sanity: SanityConfig
+    misleading: MisleadingConfig
 
     def __post_init__(self) -> None:
         if self.device not in ("cuda", "cpu"):

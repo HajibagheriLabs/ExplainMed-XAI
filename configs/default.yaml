@@ -71,3 +71,8 @@ sanity:
   # correlation with the original map stays at or above this
   similarity_threshold: 0.5
   label_randomisation_epochs: 10
+
+misleading:
+  # a wrong prediction at or above this probability counts as confidently wrong
+  confidence_threshold: 0.9
+  cases: 4
