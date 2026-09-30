@@ -20,8 +20,9 @@ reported as failing.
 
 ## Status
 
-Scaffold only. Every number in this README will be produced by a script in this repo; until the
-corresponding run exists it is written as `TBD`.
+The data layer is in place: lesion-grouped splits, dataset statistics, and the leakage demonstration
+below. No classifier has been trained yet. Every number in this README is produced by a script in
+this repo; a result whose run does not exist yet is written as `TBD`.
 
 | Model      | Macro-F1 | Balanced accuracy | Melanoma recall |
 | ---------- | -------- | ----------------- | --------------- |
@@ -31,15 +32,34 @@ corresponding run exists it is written as `TBD`.
 
 ## Dataset
 
-[HAM10000](https://doi.org/10.7910/DVN/DBW86T): roughly 10,000 dermatoscopic images across seven
-diagnostic classes, with a metadata CSV giving age, sex, lesion localisation, and how the diagnosis
-was established. The class distribution is heavily imbalanced towards melanocytic nevi, so results
-are reported as macro-F1, balanced accuracy, and per-class recall rather than accuracy.
+[HAM10000](https://doi.org/10.7910/DVN/DBW86T): 10,015 dermatoscopic images of 7,470 distinct
+lesions across seven diagnostic classes, with a metadata CSV giving age, sex, lesion localisation,
+and how the diagnosis was established.
 
-HAM10000 often has several images of the same lesion. All splits are grouped by `lesion_id`, so
-every image of a lesion lands in exactly one of train, validation, or test.
+| Class                                                   | Images | Lesions | Share of images |
+| ------------------------------------------------------- | -----: | ------: | --------------: |
+| melanocytic nevus (`nv`)                                |  6,705 |   5,403 |           66.9% |
+| melanoma (`mel`)                                        |  1,113 |     614 |           11.1% |
+| benign keratosis-like lesion (`bkl`)                    |  1,099 |     727 |           11.0% |
+| basal cell carcinoma (`bcc`)                            |    514 |     327 |            5.1% |
+| actinic keratosis / intraepithelial carcinoma (`akiec`) |    327 |     228 |            3.3% |
+| vascular lesion (`vasc`)                                |    142 |      98 |            1.4% |
+| dermatofibroma (`df`)                                   |    115 |      73 |            1.1% |
 
-Download it and place it as:
+Two properties of this dataset shape everything downstream:
+
+- **It is severely imbalanced.** Two thirds of the images are melanocytic nevi, so a model that
+  always answers "nevus" is 67% accurate and useless. Results are reported as macro-F1, balanced
+  accuracy, and per-class recall, never as accuracy alone.
+- **`lesion_id` is not `image_id`.** 1,956 lesions (26%) were photographed more than once, and
+  their 4,501 images make up 45% of the dataset. Images of the same lesion are near-duplicates.
+
+![Class balance, images per lesion, age and sex, and localisation in HAM10000](reports/figures/dataset_overview.png)
+
+The full tables behind the figure, including the class balance of each split, are in
+[`reports/dataset_stats.csv`](reports/dataset_stats.csv), written by `scripts/inspect_data.py`.
+
+Download the dataset and place it as:
 
 ```
 data/raw/ham10000/HAM10000_metadata.csv
@@ -49,29 +69,83 @@ data/raw/ham10000/images/ISIC_*.jpg
 MIMIC-CXR was deliberately not used: it requires credentialed access, so nobody could rerun this
 repo end to end.
 
+## Splits are grouped by lesion
+
+Train, validation, and test are split **by lesion, never by image**, stratified by diagnosis, with
+a fixed seed. The lesion ids of each split are committed in
+[`configs/splits.json`](configs/splits.json), and a test asserts that no lesion appears in two
+splits.
+
+| Split      | Lesions | Images |
+| ---------- | ------: | -----: |
+| Train      |   5,228 |  7,054 |
+| Validation |   1,121 |  1,464 |
+| Test       |   1,121 |  1,497 |
+
+### What happens if you split by image instead
+
+`scripts/leakage_demo.py` measures what the grouping is worth. It fine-tunes the same ImageNet
+ResNet-18 with the same hyperparameters under two protocols: the lesion-grouped split, and a naive
+split that stratifies by diagnosis but ignores `lesion_id`. Both splits are redrawn and the model
+retrained under five seeds.
+
+| Mean ± sd over 5 seeds                         |  Lesion-grouped | Naive image-level |  Naive − grouped |
+| ---------------------------------------------- | --------------: | ----------------: | ---------------: |
+| Accuracy                                       | 0.8493 ± 0.0084 |   0.8754 ± 0.0095 | +0.0261 ± 0.0101 |
+| Balanced accuracy                              | 0.6989 ± 0.0254 |   0.7644 ± 0.0238 | +0.0655 ± 0.0178 |
+| Macro-F1                                       | 0.7239 ± 0.0158 |   0.7860 ± 0.0208 | +0.0621 ± 0.0231 |
+| Accuracy on single-image lesions (cannot leak) | 0.9207 ± 0.0085 |   0.9238 ± 0.0092 | +0.0032 ± 0.0032 |
+| Accuracy on multi-image lesions                | 0.7627 ± 0.0222 |   0.8166 ± 0.0180 | +0.0539 ± 0.0235 |
+
+The naive split scores higher on accuracy, balanced accuracy, and macro-F1 in all five seeds.
+Accuracy is inflated by about 2.6 points, and the metrics that matter on an imbalanced problem by
+more: about 6.5 points of balanced accuracy and 6.2 of macro-F1.
+
+The last two rows locate the cause. Lesions photographed only once cannot leak under either
+protocol, and on them the two splits differ by 0.3 points on average. The gap comes from lesions
+photographed more than once: under the naive split an average of 535 of the 1,503 test images
+(36%) have another image of the same lesion in the training set, and accuracy on multi-image
+lesions rises by 5.4 points.
+
+The naive numbers do not describe a better model. They describe the same model graded partly on
+lesions it has already seen. Every other result in this repo uses the lesion-grouped split.
+
+Seeds are fixed, and a rerun on the same machine reproduced both result files byte for byte.
+
+Per-seed results are in [`reports/leakage_demo_runs.csv`](reports/leakage_demo_runs.csv) and the
+summary above is [`reports/leakage_demo.csv`](reports/leakage_demo.csv). Reproduce both with
+`make leakage-demo`.
+
 ## Setup
 
 Requires Python 3.11 and an NVIDIA GPU with a CUDA 12 capable driver.
 
 ```
-make setup   # creates .venv and installs pinned dependencies with CUDA 12.6 PyTorch wheels
+make setup          # creates .venv and installs pinned dependencies with CUDA 12.6 PyTorch wheels
 make lint
 make test
+make data           # writes configs/splits.json, builds the image cache, writes dataset statistics
+make leakage-demo   # grouped versus naive split comparison
 ```
 
 `make setup` calls `python3.11` (`py -3.11` on Windows). Point it at a different interpreter with
 `make setup PYTHON=/path/to/python3.11`.
 
-| Target        | Purpose                                                    |
-| ------------- | ---------------------------------------------------------- |
-| `make setup`  | create the virtual environment and install dependencies    |
-| `make test`   | run the test suite                                         |
-| `make lint`   | ruff lint and format check                                 |
-| `make format` | apply ruff formatting and autofixes                        |
-| `make data`   | build lesion-grouped splits (not implemented yet)          |
-| `make train`  | train the baselines and the fusion model (not implemented yet) |
-| `make eval`   | classification, faithfulness, and sanity checks (not implemented yet) |
-| `make report` | assemble `reports/` (not implemented yet)                  |
+`make data` decodes and resizes every image once on the GPU and caches the result under
+`data/processed/` (about 1.5 GB). Training then runs from GPU memory with no data-loading workers,
+which keeps CPU load low. `make lint` and `make test` need neither the dataset nor a GPU.
+
+| Target              | Purpose                                                               |
+| ------------------- | --------------------------------------------------------------------- |
+| `make setup`        | create the virtual environment and install dependencies               |
+| `make test`         | run the test suite                                                    |
+| `make lint`         | ruff lint and format check                                            |
+| `make format`       | apply ruff formatting and autofixes                                   |
+| `make data`         | lesion-grouped splits, image cache, and dataset statistics            |
+| `make leakage-demo` | train under grouped and naive splits and compare                      |
+| `make train`        | train the baselines and the fusion model (not implemented yet)        |
+| `make eval`         | classification, faithfulness, and sanity checks (not implemented yet) |
+| `make report`       | assemble `reports/` (not implemented yet)                             |
 
 All settings live in [`configs/default.yaml`](configs/default.yaml). Non-obvious choices are
 logged with their reasons in [`DECISIONS.md`](DECISIONS.md).
