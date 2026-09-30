@@ -150,6 +150,52 @@ class ExplainConfig:
 
 
 @dataclass(frozen=True)
+class FaithfulnessConfig:
+    subset_size: int
+    steps: int
+    patch_size: int
+    blur_sigma: float
+    top_fraction: float
+    confidence_level: float
+
+    def __post_init__(self) -> None:
+        _require_positive(
+            "faithfulness",
+            {
+                "subset_size": self.subset_size,
+                "steps": self.steps,
+                "patch_size": self.patch_size,
+                "blur_sigma": self.blur_sigma,
+            },
+        )
+        for name in ("top_fraction", "confidence_level"):
+            value = getattr(self, name)
+            if not 0.0 < value < 1.0:
+                raise ValueError(f"faithfulness.{name} must be in (0, 1), got {value}")
+
+
+@dataclass(frozen=True)
+class SanityConfig:
+    subset_size: int
+    similarity_threshold: float
+    label_randomisation_epochs: int
+
+    def __post_init__(self) -> None:
+        _require_positive(
+            "sanity",
+            {
+                "subset_size": self.subset_size,
+                "label_randomisation_epochs": self.label_randomisation_epochs,
+            },
+        )
+        if not -1.0 < self.similarity_threshold < 1.0:
+            raise ValueError(
+                "sanity.similarity_threshold must be a correlation in (-1, 1), "
+                f"got {self.similarity_threshold}"
+            )
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     device: str
@@ -160,11 +206,17 @@ class Config:
     train: TrainConfig
     leakage_demo: LeakageDemoConfig
     explain: ExplainConfig
+    faithfulness: FaithfulnessConfig
+    sanity: SanityConfig
 
     def __post_init__(self) -> None:
         if self.device not in ("cuda", "cpu"):
             raise ValueError(f"device must be 'cuda' or 'cpu', got {self.device!r}")
         _require_positive("config", {"cpu_threads": self.cpu_threads})
+        if self.sanity.subset_size > self.faithfulness.subset_size:
+            raise ValueError(
+                "sanity.subset_size cannot exceed faithfulness.subset_size"
+            )
 
 
 def load_config(path: str | Path) -> Config:

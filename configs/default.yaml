@@ -52,3 +52,22 @@ explain:
   # interpolation steps evaluated per forward pass; bounds gpu memory, not the result
   ig_batch_size: 128
   examples_per_group: 4
+
+faithfulness:
+  # a seeded sample of the test split, shared by every method and model
+  subset_size: 500
+  steps: 20
+  # image attributions are ranked and removed as patches of this many pixels a side
+  patch_size: 8
+  # removed patches are replaced by the image blurred with this sigma, in pixels
+  blur_sigma: 8.0
+  top_fraction: 0.1
+  confidence_level: 0.95
+
+sanity:
+  # the first images of the faithfulness sample
+  subset_size: 200
+  # fixed before any sanity check was run: a map fails a randomisation if its mean rank
+  # correlation with the original map stays at or above this
+  similarity_threshold: 0.5
+  label_randomisation_epochs: 10
