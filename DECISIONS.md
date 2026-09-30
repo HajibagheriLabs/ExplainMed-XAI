@@ -10,10 +10,11 @@ and is large enough to train on.
 
 ## The text modality is synthetic
 
-HAM10000 has no clinical notes. The text branch sees sentences templated from structured metadata
-(age, sex, localisation, diagnosis method). This is a legitimate way to study multimodal fusion and
-text-side attribution, but it is not clinical text, and this is stated in the README, the model
-card, and here. Nothing in the repo describes it as clinical notes.
+HAM10000 has no clinical notes. The text branch sees sentences templated from structured metadata:
+age, sex, and localisation, with the diagnosis method used only in a leakage ablation (see below).
+This is a legitimate way to study multimodal fusion and text-side attribution, but it is not
+clinical text, and this is stated in the README, the model card, and here. Nothing in the repo
+describes it as clinical notes.
 
 ## Splits are grouped by lesion, not by image
 
@@ -129,8 +130,8 @@ fusion model uses the text without it.
 The image encoder is an ImageNet EfficientNet-B0 trunk (global-average-pooled 1280-d features). It
 is small enough to fine-tune many times on one GPU, and a convolutional trunk gives Grad-CAM a
 natural target layer. The text encoder is `distilbert-base-uncased`, pooled at the [CLS] token.
-Each encoder plus a dropout and linear head is a standalone classifier, and the fusion model will
-reuse the same encoder classes.
+Each encoder plus a dropout and linear head is a standalone classifier, and the fusion model reuses
+the same encoder classes.
 
 ## Identical training conditions for every model
 
@@ -260,3 +261,40 @@ and label. The checkpoint is the epoch with the best macro-F1 against the shuffl
 the one that memorised them best, so no true label influences it. As a reference, the same
 similarity is measured between two fusion models trained on true labels under different seeds:
 that is how alike explanations are when two models learned the same task.
+
+## What the sanity checks caught
+
+Every attribution method failed at least one check, and each failure changed how the method is
+reported. Full evidence is in `reports/explanation_analysis.md`.
+
+- **Attention rollout** is identical after the fusion classifier is randomised, because it never
+  reads the classifier, and nearly identical for a model trained on shuffled labels. It is reported
+  as a description of DistilBERT's attention, not as an explanation of the prediction, even though
+  it beats random on deletion and insertion by a small margin.
+- **Integrated gradients** keeps most of its structure when the classifier and the top image blocks
+  are randomised. Its maps follow the input image. It is reported as failing, and its apparent pass
+  of the label check is discounted, because two correctly trained models disagree almost as much.
+- **Grad-CAM** passes model randomisation. It fails label randomisation narrowly, in one of three
+  seeds, so its localisation is not read as evidence that the model used the lesion for the right
+  reason.
+
+The deletion metric alone ranked all three methods as better than random. Without the insertion
+metric and the two randomisation checks, the repo would have reported three faithful explanations.
+
+## Misleading explanations are found by a rule fixed before looking at cases
+
+A confidently wrong prediction is a wrong one with a probability of at least 0.9. Its explanation
+counts as plausible when the Grad-CAM peak lies inside the lesion segmentation and the share of
+attribution inside the lesion is at least that of the median correct prediction of the same model.
+The rule uses Grad-CAM because it is the best-localised method and the one closest to passing the
+sanity checks, so it is the explanation a reader would most readily trust. The rule was written
+before any case was inspected. The figure shows the most confident case per true class, preferring
+missed malignancies. The analysis also measures whether explanation properties separate wrong from
+correct predictions (AUROC), with the model's confidence as the comparison, so the conclusion rests
+on the whole test split rather than on hand-picked images.
+
+## The final comparison table is copied, not recomputed
+
+`reports/results.csv` holds the image-only, text-only, and fusion rows and the paired fusion gain,
+copied from `reports/fusion_results.csv` rather than recomputed. Every table in the repo that
+shows these models therefore agrees to the last digit.
