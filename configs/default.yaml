@@ -6,6 +6,7 @@ cpu_threads: 2
 paths:
   metadata_csv: data/raw/ham10000/HAM10000_metadata.csv
   images_dir: data/raw/ham10000/images
+  masks_dir: data/raw/ham10000/segmentations
   cache_dir: data/processed
   splits_file: configs/splits.json
   reports_dir: reports
@@ -44,3 +45,10 @@ leakage_demo:
   batch_size: 64
   lr: 5.0e-4
   weight_decay: 1.0e-4
+
+explain:
+  batch_size: 32
+  ig_steps: 64
+  # interpolation steps evaluated per forward pass; bounds gpu memory, not the result
+  ig_batch_size: 128
+  examples_per_group: 4

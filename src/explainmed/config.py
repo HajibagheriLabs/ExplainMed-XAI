@@ -20,6 +20,7 @@ def _require_positive(section: str, values: dict[str, float]) -> None:
 class PathsConfig:
     metadata_csv: Path
     images_dir: Path
+    masks_dir: Path
     cache_dir: Path
     splits_file: Path
     reports_dir: Path
@@ -130,6 +131,25 @@ class LeakageDemoConfig:
 
 
 @dataclass(frozen=True)
+class ExplainConfig:
+    batch_size: int
+    ig_steps: int
+    ig_batch_size: int
+    examples_per_group: int
+
+    def __post_init__(self) -> None:
+        _require_positive(
+            "explain",
+            {
+                "batch_size": self.batch_size,
+                "ig_steps": self.ig_steps,
+                "ig_batch_size": self.ig_batch_size,
+                "examples_per_group": self.examples_per_group,
+            },
+        )
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     device: str
@@ -139,6 +159,7 @@ class Config:
     model: ModelConfig
     train: TrainConfig
     leakage_demo: LeakageDemoConfig
+    explain: ExplainConfig
 
     def __post_init__(self) -> None:
         if self.device not in ("cuda", "cpu"):
