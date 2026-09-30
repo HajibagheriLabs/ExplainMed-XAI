@@ -21,14 +21,14 @@ reported as failing.
 
 ## Status
 
-The data layer and the unimodal baselines are done; the fusion model is not trained yet. Test-split
-results, mean ± sd over three seeds:
+Data layer, unimodal baselines, and the fusion model are done; the explanation stages are not.
+Test-split results, mean ± sd over three seeds:
 
 | Model      |        Macro-F1 | Balanced accuracy | Melanoma recall |
 | ---------- | --------------: | ----------------: | --------------: |
-| Image only | 0.7181 ± 0.0141 |   0.7199 ± 0.0143 | 0.7341 ± 0.0150 |
-| Text only  | 0.2262 ± 0.0162 |   0.3164 ± 0.0296 | 0.2083 ± 0.0449 |
-| Fusion     |             TBD |               TBD |             TBD |
+| Image only | 0.7124 ± 0.0235 |   0.7096 ± 0.0205 | 0.6905 ± 0.0273 |
+| Text only  | 0.2266 ± 0.0061 |   0.3206 ± 0.0085 | 0.1687 ± 0.0656 |
+| Fusion     | 0.7216 ± 0.0111 |   0.7146 ± 0.0062 | 0.6885 ± 0.0034 |
 
 Every number in this README is produced by a script in this repo; a result whose run does not exist
 yet is written as `TBD`.
@@ -141,39 +141,85 @@ evaluated once on the test split. Mean ± sd over three seeds:
 
 | Model                                               |        Macro-F1 | Balanced accuracy | Melanoma recall |
 | --------------------------------------------------- | --------------: | ----------------: | --------------: |
-| Image only (EfficientNet-B0)                        | 0.7181 ± 0.0141 |   0.7199 ± 0.0143 | 0.7341 ± 0.0150 |
-| Text only (DistilBERT)                              | 0.2262 ± 0.0162 |   0.3164 ± 0.0296 | 0.2083 ± 0.0449 |
-| Text only + diagnosis method (leak, not a baseline) | 0.3075 ± 0.0084 |   0.3985 ± 0.0156 | 0.3313 ± 0.0658 |
+| Image only (EfficientNet-B0)                        | 0.7124 ± 0.0235 |   0.7096 ± 0.0205 | 0.6905 ± 0.0273 |
+| Text only (DistilBERT)                              | 0.2266 ± 0.0061 |   0.3206 ± 0.0085 | 0.1687 ± 0.0656 |
+| Text only + diagnosis method (leak, not a baseline) | 0.3163 ± 0.0194 |   0.4113 ± 0.0269 | 0.4187 ± 0.1899 |
 
 | Class recall                                            |      Image only |       Text only | Text + diagnosis method |
 | ------------------------------------------------------- | --------------: | --------------: | ----------------------: |
-| actinic keratosis / intraepithelial carcinoma (`akiec`) | 0.7255 ± 0.0707 | 0.1961 ± 0.2066 |         0.5425 ± 0.1822 |
-| basal cell carcinoma (`bcc`)                            | 0.7835 ± 0.0270 | 0.2165 ± 0.1081 |         0.4199 ± 0.0600 |
-| benign keratosis-like lesion (`bkl`)                    | 0.6964 ± 0.0321 | 0.3163 ± 0.0327 |         0.1826 ± 0.0205 |
-| dermatofibroma (`df`)                                   | 0.5758 ± 0.1144 | 0.6818 ± 0.0909 |         0.3182 ± 0.0909 |
-| melanoma (`mel`)                                        | 0.7341 ± 0.0150 | 0.2083 ± 0.0449 |         0.3313 ± 0.0658 |
-| melanocytic nevus (`nv`)                                | 0.8873 ± 0.0098 | 0.4897 ± 0.0386 |         0.6613 ± 0.0405 |
-| vascular lesion (`vasc`)                                | 0.6364 ± 0.0909 | 0.1061 ± 0.0262 |         0.3333 ± 0.0946 |
+| actinic keratosis / intraepithelial carcinoma (`akiec`) | 0.7582 ± 0.0566 | 0.3660 ± 0.0967 |         0.4510 ± 0.2121 |
+| basal cell carcinoma (`bcc`)                            | 0.7619 ± 0.0825 | 0.2035 ± 0.0940 |         0.3030 ± 0.1261 |
+| benign keratosis-like lesion (`bkl`)                    | 0.6921 ± 0.0224 | 0.2845 ± 0.1237 |         0.1762 ± 0.0287 |
+| dermatofibroma (`df`)                                   | 0.5455 ± 0.0909 | 0.6515 ± 0.1144 |         0.4394 ± 0.0525 |
+| melanoma (`mel`)                                        | 0.6905 ± 0.0273 | 0.1687 ± 0.0656 |         0.4187 ± 0.1899 |
+| melanocytic nevus (`nv`)                                | 0.8977 ± 0.0095 | 0.4640 ± 0.0600 |         0.6970 ± 0.0730 |
+| vascular lesion (`vasc`)                                | 0.6212 ± 0.0525 | 0.1061 ± 0.0525 |         0.3939 ± 0.0525 |
 
-- **The image carries the signal.** The image-only model reaches a macro-F1 of 0.718, yet still
-  misses roughly a quarter of melanomas (recall 0.734).
-- **Metadata without the leak is only weakly informative.** Text-only balanced accuracy is 0.316,
+- **The image carries the signal.** The image-only model reaches a macro-F1 of 0.712, yet still
+  misses about three in ten melanomas (recall 0.691).
+- **Metadata without the leak is only weakly informative.** Text-only balanced accuracy is 0.321,
   above the 0.143 of chance with seven classes but far below the image. That is a property of the
   text, not an undertrained model: 91% of images share their exact description with an image of a
   different diagnosis, and a lookup table that memorises each training description's class
   frequencies reaches a balanced accuracy of 0.305, which DistilBERT slightly exceeds
   ([`reports/text_examples.md`](reports/text_examples.md)).
 - **The diagnosis method is a leak, and the ablation shows it.** Adding that one sentence lifts
-  text-only balanced accuracy from 0.316 to 0.399 and macro-F1 from 0.226 to 0.308. The sentence
+  text-only balanced accuracy from 0.321 to 0.411 and macro-F1 from 0.227 to 0.316. The sentence
   splits the data along the diagnostic workup: follow-up examination only ever appears for nevi,
   and every melanoma, basal cell carcinoma, and actinic keratosis is histopathology-confirmed. That
   row measures the leak; it is not a baseline.
-- **The bar for fusion is the image-only model.** Fusion has to beat a macro-F1 of 0.718 ± 0.014 by
+- **The bar for fusion is the image-only model.** Fusion has to beat a macro-F1 of 0.712 ± 0.024 by
   more than seed noise for the text branch to earn its place.
 
-Per-seed results are in [`reports/baselines_runs.csv`](reports/baselines_runs.csv), the summary is
-[`reports/baselines.csv`](reports/baselines.csv), and every run, with its per-epoch validation
-curve, is logged to the local MLflow store in `mlruns/`. Reproduce with `make train`.
+Per-seed results are in [`reports/baselines_runs.csv`](reports/baselines_runs.csv) and the summary
+is [`reports/baselines.csv`](reports/baselines.csv).
+
+## Fusion
+
+The fusion model concatenates the image features (EfficientNet-B0, 1280-d) and the text features
+(DistilBERT [CLS], 768-d) and classifies them with a small MLP. Both encoders start from the same
+pretrained weights as the baselines and are trained end to end by the same code, with the same
+seeds, epochs, and learning rates. The text excludes the diagnosis method.
+
+| Model                                      |         Macro-F1 | Balanced accuracy |  Melanoma recall |
+| ------------------------------------------ | ---------------: | ----------------: | ---------------: |
+| Image only                                 |  0.7124 ± 0.0235 |   0.7096 ± 0.0205 |  0.6905 ± 0.0273 |
+| Text only                                  |  0.2266 ± 0.0061 |   0.3206 ± 0.0085 |  0.1687 ± 0.0656 |
+| **Fusion**                                 |  0.7216 ± 0.0111 |   0.7146 ± 0.0062 |  0.6885 ± 0.0034 |
+| Fusion − image only (paired by seed)       | +0.0092 ± 0.0303 |  +0.0050 ± 0.0244 | -0.0020 ± 0.0300 |
+| Fusion, text shuffled across test images   |  0.6674 ± 0.0245 |   0.6573 ± 0.0216 |  0.6845 ± 0.0372 |
+| Fusion, images shuffled across test images |  0.1439 ± 0.0055 |   0.1447 ± 0.0052 |  0.1270 ± 0.0241 |
+
+**Fusion adds little over the image alone.** Paired by seed, the macro-F1 gain is +0.009 ± 0.030
+(+0.032, +0.021, and −0.025 across the three seeds) and the balanced-accuracy gain is +0.005. Both
+are smaller than the seed-to-seed variation of the image-only model, so this experiment gives no
+evidence that the templated metadata improves classification.
+
+**Fusion does use the text, but it does not help.** Given the text of a different test image,
+fusion drops to a macro-F1 of 0.667, below the image-only model, so its predictions do depend on the
+text. Given the correct text, it only matches the image-only model. Shuffling the images instead
+drops fusion to chance (balanced accuracy 0.145 against 1/7): the text cannot carry the prediction
+on its own. The fusion model has learned to lean on a weak signal that, on this data, buys nothing
+the image did not already provide.
+
+### Melanoma recall
+
+Melanoma is the class where a miss matters most, and neither model is good at it. Recall is
+0.691 ± 0.027 for image only and 0.689 ± 0.003 for fusion: about three in ten melanomas in the test
+split are missed, and adding the metadata changes nothing. The confusion matrices show where they
+go. Pooled over the three fusion seeds (504 melanoma predictions), 20% of melanomas
+are called melanocytic nevi (19% for image only), the most dangerous error because it
+labels a malignant lesion as a common benign mole, and 6% are called benign keratosis.
+In the other direction, 6% of nevi are called melanoma.
+
+![Confusion matrices of the image-only and fusion models, rows normalised by true class](reports/figures/confusion_matrices.png)
+
+The counts behind the figure are in [`reports/confusion_matrices.csv`](reports/confusion_matrices.csv),
+per-seed results in [`reports/fusion_runs.csv`](reports/fusion_runs.csv), and the summary above is
+[`reports/fusion_results.csv`](reports/fusion_results.csv). Every training run and its validation
+curve is logged to the local MLflow store in `mlruns/`. Reproduce the baselines and fusion with
+`make train`; a rerun of the fusion training on the same machine reproduced its per-seed results
+and confusion counts byte for byte.
 
 ## Setup
 
@@ -185,7 +231,7 @@ make lint
 make test
 make data           # writes configs/splits.json, builds the image cache, writes dataset statistics
 make leakage-demo   # grouped versus naive split comparison
-make train          # image-only and text-only baselines, three seeds each
+make train          # baselines and fusion model, three seeds each
 ```
 
 `make setup` calls `python3.11` (`py -3.11` on Windows). Point it at a different interpreter with
@@ -203,7 +249,7 @@ which keeps CPU load low. `make lint` and `make test` need neither the dataset n
 | `make format`       | apply ruff formatting and autofixes                                   |
 | `make data`         | lesion-grouped splits, image cache, dataset statistics, text examples |
 | `make leakage-demo` | train under grouped and naive splits and compare                      |
-| `make train`        | train and evaluate the unimodal baselines                             |
+| `make train`        | train and evaluate the baselines and the fusion model                 |
 | `make eval`         | classification, faithfulness, and sanity checks (not implemented yet) |
 | `make report`       | assemble `reports/` (not implemented yet)                             |
 
