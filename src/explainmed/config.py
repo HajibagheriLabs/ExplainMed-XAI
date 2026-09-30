@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, get_type_hints
+from typing import Any, get_args, get_origin, get_type_hints
 
 import yaml
 
@@ -14,6 +14,7 @@ import yaml
 class PathsConfig:
     metadata_csv: Path
     images_dir: Path
+    cache_dir: Path
     splits_file: Path
     reports_dir: Path
     runs_dir: Path
@@ -23,12 +24,23 @@ class PathsConfig:
 @dataclass(frozen=True)
 class DataConfig:
     image_size: int
+    decode_batch_size: int
+    normalize_mean: tuple[float, ...]
+    normalize_std: tuple[float, ...]
     val_fraction: float
     test_fraction: float
 
     def __post_init__(self) -> None:
-        if self.image_size <= 0:
-            raise ValueError(f"data.image_size must be positive, got {self.image_size}")
+        for name in ("image_size", "decode_batch_size"):
+            if getattr(self, name) <= 0:
+                raise ValueError(
+                    f"data.{name} must be positive, got {getattr(self, name)}"
+                )
+        for name in ("normalize_mean", "normalize_std"):
+            if len(getattr(self, name)) != 3:
+                raise ValueError(f"data.{name} must have one value per rgb channel")
+        if min(self.normalize_std) <= 0:
+            raise ValueError("data.normalize_std values must be positive")
         for name in ("val_fraction", "test_fraction"):
             value = getattr(self, name)
             if not 0.0 < value < 1.0:
@@ -61,6 +73,23 @@ class TrainConfig:
 
 
 @dataclass(frozen=True)
+class LeakageDemoConfig:
+    repeats: int
+    epochs: int
+    batch_size: int
+    lr: float
+
+    def __post_init__(self) -> None:
+        for name in ("repeats", "epochs", "batch_size"):
+            if getattr(self, name) <= 0:
+                raise ValueError(
+                    f"leakage_demo.{name} must be positive, got {getattr(self, name)}"
+                )
+        if self.lr <= 0:
+            raise ValueError(f"leakage_demo.lr must be positive, got {self.lr}")
+
+
+@dataclass(frozen=True)
 class Config:
     seed: int
     device: str
@@ -68,6 +97,7 @@ class Config:
     paths: PathsConfig
     data: DataConfig
     train: TrainConfig
+    leakage_demo: LeakageDemoConfig
 
     def __post_init__(self) -> None:
         if self.device not in ("cuda", "cpu"):
@@ -100,6 +130,11 @@ def _build(cls: type, raw: Any, where: str) -> Any:
 def _coerce(expected: type, value: Any, where: str) -> Any:
     if dataclasses.is_dataclass(expected):
         return _build(expected, value, where)
+    if get_origin(expected) is tuple and isinstance(value, list):
+        item_type = get_args(expected)[0]
+        return tuple(
+            _coerce(item_type, item, f"{where}[{i}]") for i, item in enumerate(value)
+        )
     if expected is Path and isinstance(value, str):
         return Path(value)
     # bool subclasses int, so without this `epochs: true` would pass as 1

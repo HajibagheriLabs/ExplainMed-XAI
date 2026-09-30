@@ -6,6 +6,7 @@ cpu_threads: 2
 paths:
   metadata_csv: data/raw/ham10000/HAM10000_metadata.csv
   images_dir: data/raw/ham10000/images
+  cache_dir: data/processed
   splits_file: configs/splits.json
   reports_dir: reports
   runs_dir: runs
@@ -13,6 +14,10 @@ paths:
 
 data:
   image_size: 224
+  decode_batch_size: 64
+  # imagenet statistics, matching the pretrained image encoders
+  normalize_mean: [0.485, 0.456, 0.406]
+  normalize_std: [0.229, 0.224, 0.225]
   val_fraction: 0.15
   test_fraction: 0.15
 
@@ -21,3 +26,9 @@ train:
   epochs: 10
   lr: 3.0e-4
   weight_decay: 1.0e-4
+
+leakage_demo:
+  repeats: 5
+  epochs: 12
+  batch_size: 64
+  lr: 5.0e-4
