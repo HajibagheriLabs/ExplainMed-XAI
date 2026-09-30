@@ -5,7 +5,14 @@ import argparse
 import pandas as pd
 
 from explainmed.config import load_config
-from explainmed.data import CLASS_NAMES, CLASSES, load_metadata
+from explainmed.data import (
+    CLASS_NAMES,
+    CLASSES,
+    assign_splits,
+    load_metadata,
+    load_splits,
+)
+from explainmed.evaluate import classification_metrics
 from explainmed.text import DIAGNOSIS_METHOD_PHRASES, SITE_PHRASES, describe
 
 
@@ -30,6 +37,23 @@ def pick_examples(metadata: pd.DataFrame, seed: int) -> pd.DataFrame:
         metadata[metadata["localization"] == "unknown"].head(1),
     ]
     return pd.concat(per_class + missing).drop_duplicates("image_id")
+
+
+def lookup_table_reference(
+    metadata: pd.DataFrame, texts: pd.Series, split: pd.Series
+) -> dict[str, float]:
+    """Test metrics of memorising each training description's class frequencies."""
+    train = split.to_numpy() == "train"
+    test = split.to_numpy() == "test"
+    labels = metadata["label"].to_numpy()
+    counts = pd.crosstab(texts[train].to_numpy(), labels[train])
+    counts = counts.reindex(columns=range(len(CLASSES)), fill_value=0)
+    # dividing by class size makes the rule target balanced accuracy, as the models do
+    per_class_rate = counts / counts.sum(axis=0)
+    table = per_class_rate.idxmax(axis=1)
+    most_common = int(pd.Series(labels[train]).mode()[0])
+    predicted = texts[test].map(table).fillna(most_common).astype(int).to_numpy()
+    return classification_metrics(labels[test], predicted, CLASSES)
 
 
 def main() -> None:
@@ -63,6 +87,11 @@ def main() -> None:
     distinct = {include: texts.nunique() for include, texts in descriptions.items()}
     classes_per_text = metadata["dx"].groupby(descriptions[False].to_numpy()).nunique()
     shared = descriptions[False].map(classes_per_text).gt(1).mean()
+    split = assign_splits(metadata, load_splits(cfg))
+    reference = {
+        include: lookup_table_reference(metadata, texts, split)
+        for include, texts in descriptions.items()
+    }
     crosstab = pd.crosstab(metadata["dx_type"], metadata["dx"]).reindex(
         columns=list(CLASSES), fill_value=0
     )
@@ -139,6 +168,13 @@ without it, so the size of the leak is measured instead of hidden.
 The {len(metadata):,} images map to only {distinct[False]:,} distinct descriptions without the
 diagnosis method ({distinct[True]:,} with it). {shared:.0%} of images have a description that also
 belongs to an image of a different diagnosis, which caps what any text-only model can achieve.
+
+A lookup table that memorises how often each exact training description occurs in each class, and
+predicts the class where it is relatively most frequent, reaches a test macro-F1 of
+{reference[False]["macro_f1"]:.4f} and a balanced accuracy of {reference[False]["balanced_accuracy"]:.4f}
+({reference[True]["macro_f1"]:.4f} and {reference[True]["balanced_accuracy"]:.4f} with the
+diagnosis method). This is a reference for how much a text-only model can extract, not a
+baseline to beat: descriptions unseen in training fall back to the most common class.
 """
     out_file = cfg.paths.reports_dir / "text_examples.md"
     out_file.write_text(report, encoding="utf-8", newline="\n")

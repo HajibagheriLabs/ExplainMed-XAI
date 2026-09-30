@@ -88,3 +88,10 @@ without it, so the size of the leak is measured instead of hidden.
 The 10,015 images map to only 419 distinct descriptions without the
 diagnosis method (806 with it). 91% of images have a description that also
 belongs to an image of a different diagnosis, which caps what any text-only model can achieve.
+
+A lookup table that memorises how often each exact training description occurs in each class, and
+predicts the class where it is relatively most frequent, reaches a test macro-F1 of
+0.2093 and a balanced accuracy of 0.3054
+(0.2906 and 0.3457 with the
+diagnosis method). This is a reference for how much a text-only model can extract, not a
+baseline to beat: descriptions unseen in training fall back to the most common class.
