@@ -1,10 +1,4 @@
-"""Grad-CAM, integrated gradients, and text attention rollout behind one attribution interface.
-
-Every method takes the fusion model, a batch, and the class to explain, and returns
-non-negative evidence for that class over its modality's input grid: [N, H, W] pixels for
-image methods, [N, T] tokens for the text method. Each map is scaled so its maximum is 1; a map
-with no positive evidence is all zeros. Special tokens and padding always get zero.
-"""
+"""Grad-CAM, integrated gradients, and text attention rollout behind one attribution interface."""
 
 from __future__ import annotations
 
@@ -99,7 +93,7 @@ def attribute(
     target: torch.Tensor,
     cfg: ExplainConfig,
 ) -> torch.Tensor:
-    """Attributions of `method` for `target`, batched to bound GPU memory."""
+    """Evidence for `target` over pixels [N, H, W] or tokens [N, T], each map scaled to max 1."""
     if method not in METHODS:
         raise ValueError(f"unknown attribution method {method!r}")
     model.eval()

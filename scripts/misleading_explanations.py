@@ -73,7 +73,7 @@ def explain_test_split(
     predicted_units = unit_scores(maps["grad_cam"], "image", patch)
     true_units = unit_scores(maps["grad_cam_true_class"], "image", patch)
     valid = torch.ones_like(predicted_units, dtype=torch.bool)
-    # how much the map changes when asked about the right class instead of the chosen one
+    # a map that barely changes with the class it explains cannot say which class is right
     columns["grad_cam_predicted_vs_true_class"] = (
         rank_correlation(predicted_units, true_units, valid).cpu().numpy()
     )

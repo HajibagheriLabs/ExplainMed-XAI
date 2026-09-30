@@ -1,9 +1,4 @@
-"""Deletion and insertion AUC, sparsity, localisation, and inter-method agreement.
-
-Image attributions are compared on a grid of square patches rather than single pixels, so that
-a smooth Grad-CAM map and a speckled integrated-gradients map are judged on the regions they
-highlight. Text attributions are compared on content tokens. Both grids are called units here.
-"""
+"""Deletion and insertion AUC, sparsity, localisation, and agreement on patch or token units."""
 
 from __future__ import annotations
 
@@ -85,12 +80,7 @@ def perturbation_curves(
     cfg: FaithfulnessConfig,
     generator: torch.Generator,
 ) -> dict[str, torch.Tensor]:
-    """Target-class probability as the top-ranked units are removed, or inserted.
-
-    Returns [N, steps + 1] curves under "deletion" and "insertion", sampled at
-    `fractions(cfg)`. Removing an image patch replaces it with `reference`; removing a token
-    hides it from attention. Insertion starts from everything removed.
-    """
+    """Target-class probability [N, steps + 1] as top-ranked units are deleted or inserted."""
     model.eval()
     valid = valid_units(batch, modality, scores.shape[1])
     ranks = descending_ranks(scores, valid, generator)
@@ -160,12 +150,7 @@ def top_overlap(
 def lesion_localisation(
     scores: torch.Tensor, lesion: torch.Tensor
 ) -> dict[str, torch.Tensor]:
-    """Share of attribution inside the lesion and whether the top unit lies in it.
-
-    `lesion` holds the lesion's share of each unit. The chance levels are what a map
-    without information scores: the lesion's share of the image, and the share of units
-    that are mostly lesion.
-    """
+    """Attribution share in the lesion, whether the top unit is in it, and both chance levels."""
     total = scores.sum(dim=1)
     inside = (scores * lesion).sum(dim=1) / torch.where(total > 0, total, 1.0)
     hit = (lesion.gather(1, scores.argmax(dim=1, keepdim=True))[:, 0] >= 0.5).float()
