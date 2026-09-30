@@ -14,41 +14,7 @@ from explainmed.data import (
     load_metadata,
     load_splits,
 )
-
-SURFACE = "#fcfcfb"
-INK = "#0b0b0b"
-SECONDARY_INK = "#52514e"
-MUTED_INK = "#898781"
-GRIDLINE = "#e1e0d9"
-AXIS = "#c3c2b7"
-SERIES = ("#2a78d6", "#eb6834")
-STYLE = {
-    "figure.facecolor": SURFACE,
-    "axes.facecolor": SURFACE,
-    "savefig.facecolor": SURFACE,
-    "font.family": "sans-serif",
-    "font.sans-serif": ["Segoe UI", "Helvetica Neue", "Arial", "DejaVu Sans"],
-    "font.size": 9,
-    "text.color": INK,
-    "axes.titlesize": 11,
-    "axes.titleweight": "semibold",
-    "axes.titlelocation": "left",
-    "axes.titlepad": 10,
-    "axes.labelcolor": SECONDARY_INK,
-    "axes.edgecolor": AXIS,
-    "axes.linewidth": 0.8,
-    "axes.spines.top": False,
-    "axes.spines.right": False,
-    "axes.axisbelow": True,
-    "grid.color": GRIDLINE,
-    "grid.linewidth": 0.8,
-    "xtick.color": AXIS,
-    "ytick.color": AXIS,
-    "xtick.labelcolor": SECONDARY_INK,
-    "ytick.labelcolor": SECONDARY_INK,
-    "legend.frameon": False,
-}
-LABEL_STYLE = {"padding": 3, "color": SECONDARY_INK, "fontsize": 8}
+from explainmed.style import BAR_LABEL_STYLE, FIGURE_STYLE, SERIES, SURFACE
 
 
 def tally(frame: pd.DataFrame, column: str, statistic: str, split: str) -> pd.DataFrame:
@@ -112,14 +78,14 @@ def plot_overview(stats: pd.DataFrame, metadata: pd.DataFrame) -> Figure:
             color=color,
             label=column,
         )
-        ax_class.bar_label(bars, fmt="{:,.0f}", **LABEL_STYLE)
+        ax_class.bar_label(bars, fmt="{:,.0f}", **BAR_LABEL_STYLE)
     ax_class.set_yticks(positions, [f"{CLASS_NAMES[c]} ({c})" for c in classes.index])
     ax_class.set_title("Images and lesions per diagnosis class")
     ax_class.legend(loc="lower right")
 
     sizes = select(stats, "images_per_lesion").sort_index()
     bars = ax_lesion.bar(sizes.index, sizes["lesions"], width=0.5, color=SERIES[0])
-    ax_lesion.bar_label(bars, fmt="{:,.0f}", **LABEL_STYLE)
+    ax_lesion.bar_label(bars, fmt="{:,.0f}", **BAR_LABEL_STYLE)
     ax_lesion.set_title("Lesions by number of images of the same lesion")
     ax_lesion.set_xlabel("images per lesion")
     ax_lesion.set_ylabel("lesions")
@@ -150,7 +116,7 @@ def plot_overview(stats: pd.DataFrame, metadata: pd.DataFrame) -> Figure:
 
     sites = select(stats, "localization").sort_values("lesions")
     bars = ax_site.barh(sites.index, sites["lesions"], height=0.6, color=SERIES[0])
-    ax_site.bar_label(bars, fmt="{:,.0f}", **LABEL_STYLE)
+    ax_site.bar_label(bars, fmt="{:,.0f}", **BAR_LABEL_STYLE)
     ax_site.set_title("Lesions by body localisation")
 
     for ax in (ax_class, ax_site):
@@ -180,7 +146,7 @@ def main() -> None:
         float_format="%.4f",
         lineterminator="\n",
     )
-    with matplotlib.rc_context(STYLE):
+    with matplotlib.rc_context(FIGURE_STYLE):
         fig = plot_overview(stats, metadata)
         fig.savefig(figures_dir / "dataset_overview.png", dpi=150)
     print(stats[stats["split"] == "all"].to_string(index=False))
