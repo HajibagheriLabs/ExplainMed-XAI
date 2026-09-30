@@ -10,7 +10,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 from sklearn.model_selection import train_test_split
-from torchvision.io import ImageReadMode, decode_jpeg, read_file
+from torchvision.io import ImageReadMode, decode_jpeg, decode_png, read_file
 
 from explainmed.config import Config, DataConfig
 
@@ -175,6 +175,32 @@ def load_images(
     cfg.paths.cache_dir.mkdir(parents=True, exist_ok=True)
     torch.save({"image_ids": image_ids, "images": images.cpu()}, cache_file)
     return images
+
+
+def load_masks(
+    metadata: pd.DataFrame, rows: torch.Tensor, cfg: Config, device: torch.device
+) -> torch.Tensor:
+    """Lesion segmentation masks of `rows` as bool [n, S, S], squashed like the images."""
+    size = cfg.data.image_size
+    image_ids = metadata["image_id"].to_numpy()[rows.cpu().numpy()]
+    masks = torch.empty((len(image_ids), size, size), dtype=torch.bool, device=device)
+    step = cfg.data.decode_batch_size
+    for start in range(0, len(image_ids), step):
+        decoded = [
+            decode_png(
+                read_file(str(cfg.paths.masks_dir / f"{image_id}_segmentation.png")),
+                mode=ImageReadMode.GRAY,
+            )
+            for image_id in image_ids[start : start + step]
+        ]
+        resized = F.interpolate(
+            torch.stack(decoded).to(device).float(),
+            size=(size, size),
+            mode="bilinear",
+            antialias=True,
+        )
+        masks[start : start + step] = resized[:, 0] >= 127.5
+    return masks
 
 
 def eval_transform(images: torch.Tensor, cfg: DataConfig) -> torch.Tensor:
