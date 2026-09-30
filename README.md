@@ -21,8 +21,8 @@ reported as failing.
 
 ## Status
 
-Data layer, unimodal baselines, the fusion model, and the explanation methods are done; the
-faithfulness metrics and sanity checks are not.
+Data layer, unimodal baselines, fusion, the explanation methods, their faithfulness metrics, and
+the sanity checks are done.
 Test-split results, mean ± sd over three seeds:
 
 | Model      |        Macro-F1 | Balanced accuracy | Melanoma recall |
@@ -252,6 +252,84 @@ show are tested in the next stage. The two image methods disagree: Grad-CAM mark
 lesion, while integrated gradients spreads isolated pixels over the lesion and the surrounding skin.
 And in all eight cases, attention rollout gives its largest weight to the closing full stop, with a
 similar profile over the remaining words of every sentence.
+
+## Faithfulness
+
+Every method is scored on the same 500 test images against a **random-attribution control**
+([`src/explainmed/faithfulness.py`](src/explainmed/faithfulness.py)). Image attributions are ranked
+over 8×8-pixel patches. Deletion removes the highest-ranked patches first, replacing them with a
+blurred copy of the image, and tracks the probability of the predicted class. Insertion starts from
+the blurred image and restores the highest-ranked patches first. Text attributions are ranked over
+content tokens, and a removed token is hidden from attention. Mean ± sd over the three fusion models:
+
+| Method                     | Deletion AUC (lower is better) | Insertion AUC (higher is better) | vs random: deletion / insertion | Attribution in lesion | Peak in lesion | Gini |
+| -------------------------- | -----------------------------: | -------------------------------: | ------------------------------- | --------------------: | -------------: | ---: |
+| Grad-CAM                   |                0.5908 ± 0.0226 |                  0.6048 ± 0.0724 |                  better / worse |                   69% |            98% | 0.70 |
+| Integrated gradients       |                0.6432 ± 0.0389 |                  0.6456 ± 0.0381 |                  better / worse |                   27% |            46% | 0.36 |
+| Random attribution (image) |                0.6882 ± 0.0323 |                  0.6893 ± 0.0300 |                         control |                   27% |            28% | 0.33 |
+| Attention rollout          |                0.8785 ± 0.0083 |                  0.9067 ± 0.0091 |                 better / better |                     — |              — | 0.26 |
+| Random attribution (text)  |                0.8934 ± 0.0118 |                  0.8945 ± 0.0107 |                         control |                     — |              — | 0.33 |
+
+"Better" or "worse" means the paired per-image difference from the control has a 95% interval that
+excludes zero on that side in all three seeds. A map without information puts 26% of its
+attribution inside the lesion, and its peak in the lesion 28% of the time.
+
+- **Grad-CAM marks a region the model needs, not one that suffices.** Deleting its top patches
+  destroys the prediction faster than any other ranking. Restoring them first recovers it more
+  slowly than restoring random patches, because the model also uses the skin around the lesion.
+- **Integrated gradients is barely better than random.** It helps on deletion, is worse on
+  insertion, and places attribution in the lesion at exactly the chance rate.
+- **Grad-CAM and integrated gradients disagree.** Their maps correlate at
+  0.12, and their top-10% regions overlap by
+  0.13 intersection over union, against 0.05 for two random maps
+  ([`reports/method_agreement.csv`](reports/method_agreement.csv)).
+- **Rollout beats random on a signal that barely exists.** Hiding every content token lowers the
+  predicted-class probability only from 0.92 to 0.85, so the margins are about one hundredth of an AUC.
+
+Deletion and insertion depend on what replaces a removed patch. With a mean-colour fill instead of
+the blur, Grad-CAM's deletion result holds, its insertion deficit shrinks and is no longer consistent
+across seeds, and integrated gradients no longer beats random on either curve
+([`reports/faithfulness_reference_check.csv`](reports/faithfulness_reference_check.csv)).
+
+![Deletion and insertion curves of every method against the random control](reports/figures/faithfulness_curves.png)
+
+## Sanity checks
+
+Both checks from Adebayo et al. (2018) run on 200 test images per fusion model
+([`src/explainmed/sanity.py`](src/explainmed/sanity.py)). **Cascading model randomisation**
+re-initialises the model layer by layer from the output down along each method's branch.
+**Label randomisation** retrains the fusion model for 10 epochs on shuffled labels. Similarity is the
+rank correlation between the original map and the new one. A method fails a check if that
+correlation is 0.5 or higher at any step in any seed, a threshold fixed before either check was run.
+For reference, the last column gives the similarity between two fusion models trained on the true
+labels with different seeds.
+
+| Method               | Model randomisation: first step → last, highest | Label randomisation | Two true-label models | Verdict                       |
+| -------------------- | ----------------------------------------------- | ------------------- | --------------------- | ----------------------------- |
+| Grad-CAM             | passes (0.11 → 0.12, highest 0.46)              | **fails** (0.50)    | 0.83                  | **fails label randomisation** |
+| Integrated gradients | **fails** (0.72 → 0.37, highest 0.79)           | passes (0.37)       | 0.41                  | **fails model randomisation** |
+| Attention rollout    | **fails** (1.00 → 0.15, highest 1.00)           | **fails** (0.89)    | 0.97                  | **fails both checks**         |
+
+**No method passes both checks.**
+
+- **Attention rollout fails both.** Its map is identical after the fusion classifier is randomised,
+  because rollout never reads it, and a model trained on shuffled labels keeps a correlation of 0.89.
+  It describes DistilBERT's attention, not the decision.
+- **Integrated gradients fails model randomisation.** Its maps keep a 0.72 correlation after the
+  output layer is randomised and 0.37 with the entire image branch random. They follow the input
+  image, not the model. It passes the label check only because its maps differ almost as much
+  between two correctly trained models (0.41).
+- **Grad-CAM passes model randomisation and fails label randomisation narrowly.** A model trained on
+  shuffled labels, at chance on the true test labels, still produces Grad-CAM maps correlating at
+  0.50 with the real model's (0.45, 0.49, and 0.57 across seeds). Part of what Grad-CAM shows is where
+  the lesion is, whatever the model learned.
+
+The full evidence and a verdict per method are in
+[`reports/explanation_analysis.md`](reports/explanation_analysis.md).
+
+![Similarity to the original map under cascading model randomisation and label randomisation](reports/figures/sanity_checks.png)
+
+![Grad-CAM and integrated-gradients maps of one image as the model is randomised](reports/figures/sanity_examples.png)
 
 ## Setup
 
