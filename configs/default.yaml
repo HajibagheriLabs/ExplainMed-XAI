@@ -1,0 +1,23 @@
+seed: 42
+device: cuda
+# caps torch intra-op threads; heavy work is meant to run on the gpu
+cpu_threads: 2
+
+paths:
+  metadata_csv: data/raw/ham10000/HAM10000_metadata.csv
+  images_dir: data/raw/ham10000/images
+  splits_file: configs/splits.json
+  reports_dir: reports
+  runs_dir: runs
+  mlflow_dir: mlruns
+
+data:
+  image_size: 224
+  val_fraction: 0.15
+  test_fraction: 0.15
+
+train:
+  batch_size: 64
+  epochs: 10
+  lr: 3.0e-4
+  weight_decay: 1.0e-4
