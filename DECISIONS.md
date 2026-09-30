@@ -155,3 +155,35 @@ MLflow 3.16 refuses the plain file store (`./mlruns`) unless an environment over
 tracking database is therefore `mlruns/mlflow.db` with artifacts under `mlruns/artifacts/`, which
 keeps every run in the gitignored `mlruns/` directory. Browse it with
 `mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`.
+
+## Fusion: late fusion by concatenation and a small MLP
+
+The fusion model concatenates the pooled EfficientNet-B0 features (1280-d) and the DistilBERT [CLS]
+state (768-d) and passes them through dropout, a 256-unit GELU layer, and a linear classifier. Late
+fusion keeps each encoder identical to its unimodal baseline, so any difference in results comes
+from combining them. The hidden layer lets the classifier model interactions between modalities
+(an appearance that means something different at a different age or body site), which a single
+linear layer over the concatenation could not.
+
+Both encoders start from the same pretrained weights as the baselines and are trained end to end by
+the same `fit` function with the same seeds, epochs, and per-encoder learning rates. Starting from
+the trained unimodal checkpoints instead would give fusion extra training and break the comparison.
+The text is the version without the diagnosis method.
+
+## Fusion gain is a paired difference, and modality use is measured directly
+
+Fusion and image-only runs share seeds, and therefore batch order and augmentation, so the gain is
+computed per seed and summarised as a paired difference.
+
+A higher score does not show that the model uses the text. After training, each fusion checkpoint is
+re-evaluated with the text inputs permuted across test images, and again with the images permuted.
+Permuting a modality breaks its link to the label while keeping its distribution, so the drop in
+performance measures how much the model relies on that modality.
+
+## Every run is seeded before its model is built
+
+The classifier heads are randomly initialised when the model is constructed. The first version of
+the baseline script seeded only inside `fit`, after construction, so head initialisation depended
+on the RNG state left by earlier runs, and a single run could not be reproduced on its own.
+`train_and_evaluate` now seeds before building each model. The baselines were retrained after this
+fix, so their committed results come from the current code.
