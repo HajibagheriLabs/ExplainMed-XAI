@@ -63,10 +63,17 @@ def describe_all(metadata: pd.DataFrame, include_diagnosis_method: bool) -> list
 def tokenize(
     texts: list[str], tokenizer_name: str, device: torch.device
 ) -> dict[str, torch.Tensor]:
-    """Token ids and attention masks for every text, padded to the longest one."""
+    """Token ids, attention masks, and special-token masks, padded to the longest text."""
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    encoded = tokenizer(texts, padding="longest", return_tensors="pt")
+    encoded = tokenizer(
+        texts,
+        padding="longest",
+        return_tensors="pt",
+        return_special_tokens_mask=True,
+    )
     return {
         "input_ids": encoded["input_ids"].to(device),
         "attention_mask": encoded["attention_mask"].to(device),
+        # marks [CLS], [SEP], and padding, which text attributions exclude
+        "special_tokens_mask": encoded["special_tokens_mask"].to(device),
     }
