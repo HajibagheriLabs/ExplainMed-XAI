@@ -45,3 +45,18 @@ FIGURE_STYLE = {
     "legend.frameon": False,
 }
 BAR_LABEL_STYLE = {"padding": 3, "color": SECONDARY_INK, "fontsize": 8}
+# one colour per attribution method in every figure, with the random control in grey
+METHOD_COLOURS = {
+    "grad_cam": SERIES[0],
+    "integrated_gradients": SERIES[1],
+    "attention_rollout": "#1f9e89",
+    "random_image": MUTED_INK,
+    "random_text": MUTED_INK,
+}
+METHOD_LABELS = {
+    "grad_cam": "Grad-CAM",
+    "integrated_gradients": "Integrated gradients",
+    "attention_rollout": "Attention rollout",
+    "random_image": "Random attribution",
+    "random_text": "Random attribution",
+}
