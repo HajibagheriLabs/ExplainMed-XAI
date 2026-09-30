@@ -59,7 +59,7 @@ image also turned up in the seeded random sample of test predictions rendered in
 [`figures/explanations_incorrect.png`](figures/explanations_incorrect.png), before this selection was
 made. A well-localised map on a confident error is not a rare edge case one has to search for.
 
-**ISIC_0031404: a melanocytic nevus called a basal cell carcinoma with probability 0.9999.** This is
+**ISIC_0031404: a melanocytic nevus called a basal cell carcinoma with probability 0.9998.** This is
 the error in the other direction, a false alarm. 91% of the map is inside the lesion, and the map
 for the true class correlates at 0.83 with it. The model would send a benign mole for an
 unnecessary excision with near certainty and an explanation that looks well founded.

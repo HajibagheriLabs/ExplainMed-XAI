@@ -302,7 +302,7 @@ content tokens, and a removed token is hidden from attention. Mean ± sd over th
 | Method                     | Deletion AUC (lower is better) | Insertion AUC (higher is better) | vs random: deletion / insertion | Share in lesion       | Peak in lesion | Gini |
 | -------------------------- | -----------------------------: | -------------------------------: | ------------------------------- | --------------------: | -------------: | ---: |
 | Grad-CAM                   |                0.5908 ± 0.0226 |                  0.6048 ± 0.0724 |                  better / worse |                   69% |            98% | 0.70 |
-| Integrated gradients       |                0.6432 ± 0.0389 |                  0.6456 ± 0.0381 |                  better / worse |                   27% |            46% | 0.36 |
+| Integrated gradients       |                0.6432 ± 0.0388 |                  0.6456 ± 0.0380 |                  better / worse |                   27% |            46% | 0.36 |
 | Random attribution (image) |                0.6882 ± 0.0323 |                  0.6893 ± 0.0300 |                         control |                   27% |            28% | 0.33 |
 | Attention rollout          |                0.8785 ± 0.0083 |                  0.9067 ± 0.0091 |                 better / better |                     — |              — | 0.26 |
 | Random attribution (text)  |                0.8934 ± 0.0118 |                  0.8945 ± 0.0107 |                         control |                     — |              — | 0.33 |
