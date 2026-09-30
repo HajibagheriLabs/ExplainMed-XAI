@@ -213,3 +213,50 @@ In the example figures, image maps saturate at their 99th percentile, because in
 concentrates on a few pixels and would otherwise be invisible. Word pieces are merged into words
 for display, each word taking its strongest piece's weight. Both are display choices only; every
 metric uses the raw maps.
+
+## Faithfulness is measured on patches, against a random control
+
+Deletion and insertion rank units by attribution and remove, or restore, them in 5% steps while
+tracking the probability of the predicted class. The area under each curve summarises it. Image
+units are 8×8-pixel patches, a 28×28 grid, because a pixel ranking would compare an upsampled 7×7
+Grad-CAM map with a speckled integrated-gradients map on pixel noise rather than on regions.
+Sparsity (Gini index), localisation, and agreement use the same grid. Text units are content
+tokens, and a removed token is masked out of attention, which removes it without shifting the
+positions of the others.
+
+A removed patch is replaced by the same image blurred with a sigma of 8 pixels. A constant fill
+would insert sharp edges, a strong signal the model never saw in training, while blur removes the
+local texture a diagnosis depends on and keeps the colour layout. The reference, the patch size,
+and the 20 steps were fixed before any result was seen. Deletion and insertion are known to depend
+on the reference, so the image methods are scored again with a mean-colour reference as a
+sensitivity check; the verdicts use the blurred reference.
+
+The control is a uniform random attribution over the same units and images. Each method is
+compared with it as a paired difference per image, with a 95% normal-approximation interval over
+the 500 images. A method is better or worse than random on a curve only if the interval excludes
+zero on that side in all three seeds; otherwise the comparison is inconclusive. Ties in a ranking,
+such as the zero region of a Grad-CAM map, are broken at random rather than in raster order.
+
+## Sanity checks follow each method's branch, with a threshold fixed in advance
+
+Cascading randomisation follows the path a method's gradients or attention take: the fusion
+MLP's output layer, then its hidden layer, then either the nine EfficientNet blocks from the top
+down (Grad-CAM and integrated gradients) or the six DistilBERT layers and the embeddings
+(attention rollout). Each layer is re-initialised with PyTorch's default initialiser for every
+parameterised submodule, batch-norm statistics included, and the code raises if any parameter
+would be missed. At every step the explained class is the trained model's prediction, so only the
+weights change.
+
+Similarity to the original map is Spearman rank correlation on the patch or token grid, with ties
+given their mean rank, reported alongside top-10% overlap. A map that randomisation flattens to a
+constant counts as similarity 0. A method passes a check only if its mean rank correlation stays
+below 0.5 at every cascade step and in every seed. The threshold was written into the config
+before either check was run. A map that survives any stage does not depend on the weights that
+stage destroyed.
+
+Label randomisation retrains the fusion model from the same pretrained weights for 10 epochs on
+labels permuted across all images, which keeps the class balance and breaks the link between image
+and label. The checkpoint is the epoch with the best macro-F1 against the shuffled training labels,
+the one that memorised them best, so no true label influences it. As a reference, the same
+similarity is measured between two fusion models trained on true labels under different seeds:
+that is how alike explanations are when two models learned the same task.
