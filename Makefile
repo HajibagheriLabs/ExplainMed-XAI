@@ -45,6 +45,9 @@ train:
 
 eval:
 	$(PY) scripts/explain_examples.py --config $(CONFIG)
+	$(PY) scripts/evaluate_faithfulness.py --config $(CONFIG)
+	$(PY) scripts/sanity_checks.py --config $(CONFIG)
+	$(PY) scripts/misleading_explanations.py --config $(CONFIG)
 
 report:
-	$(error make $@ is not implemented yet)
+	$(PY) scripts/export_results.py --config $(CONFIG)
