@@ -5,9 +5,12 @@ from __future__ import annotations
 import dataclasses
 import math
 import random
+import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -190,3 +193,83 @@ def start_mlflow(cfg: Config, experiment: str) -> None:
             experiment, artifact_location=(root / "artifacts").as_uri()
         )
     mlflow.set_experiment(experiment)
+
+
+def train_and_evaluate(
+    name: str,
+    inputs: dict[str, torch.Tensor],
+    build_model: Callable[[], nn.Module],
+    metadata: pd.DataFrame,
+    rows: dict[str, torch.Tensor],
+    cfg: Config,
+    config_path: Path,
+    run_root: Path,
+) -> list[dict[str, float | int | str]]:
+    """Train and test one model under every configured seed, logging each run to MLflow."""
+    # imported here because mlflow takes seconds to import and only scripts log runs
+    import mlflow
+
+    device = rows["train"].device
+    labels = torch.tensor(metadata["label"].to_numpy(), device=device)
+    test_rows = rows["test"].cpu().numpy()
+    truth = metadata["label"].to_numpy()[test_rows]
+    run_root.mkdir(parents=True, exist_ok=True)
+    shutil.copy(config_path, run_root / "config.yaml")
+
+    results = []
+    for repeat in range(cfg.train.repeats):
+        seed = cfg.seed + repeat
+        run_dir = run_root / name / f"seed{seed}"
+        with mlflow.start_run(run_name=f"{name}_seed{seed}"):
+            mlflow.log_params({**flat_params(cfg), "model": name, "run_seed": seed})
+            # seeding before construction makes the new head's initialisation per-seed
+            seed_everything(seed)
+            model = build_model()
+            history = fit(
+                model,
+                inputs,
+                labels,
+                rows["train"],
+                rows["val"],
+                cfg,
+                seed,
+                run_dir / "best.pt",
+            )
+            for record in history:
+                epoch_metrics = {k: v for k, v in record.items() if k != "epoch"}
+                mlflow.log_metrics(epoch_metrics, step=record["epoch"])
+
+            model.load_state_dict(torch.load(run_dir / "best.pt"))
+            predicted, probabilities = predict(model, inputs, rows["test"], cfg)
+            metrics = classification_metrics(truth, predicted, CLASSES)
+            mlflow.log_metrics({f"test_{k}": v for k, v in metrics.items()})
+            mlflow.log_artifact(str(run_root / "config.yaml"))
+
+        best = max(history, key=lambda record: record["val_macro_f1"])
+        pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
+        pd.DataFrame(
+            {
+                "image_id": metadata["image_id"].to_numpy()[test_rows],
+                "label": truth,
+                "predicted": predicted,
+                **{f"prob_{c}": probabilities[:, i] for i, c in enumerate(CLASSES)},
+            }
+        ).to_csv(run_dir / "test_predictions.csv", index=False)
+        results.append(
+            {
+                "model": name,
+                "seed": seed,
+                **metrics,
+                "val_macro_f1": best["val_macro_f1"],
+                "best_epoch": best["epoch"],
+            }
+        )
+        print(
+            f"{name} seed {seed}: test macro-F1 {metrics['macro_f1']:.4f}, "
+            f"balanced accuracy {metrics['balanced_accuracy']:.4f}, "
+            f"best epoch {best['epoch']}",
+            flush=True,
+        )
+        del model
+        torch.cuda.empty_cache()
+    return results

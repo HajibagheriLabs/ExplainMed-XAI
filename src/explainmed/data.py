@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn.functional as F
@@ -102,6 +103,17 @@ def assign_splits(metadata: pd.DataFrame, splits: dict[str, list[str]]) -> pd.Se
             f"unassigned, {len(set(owner) - lesions)} not in the metadata"
         )
     return metadata["lesion_id"].map(owner).rename("split")
+
+
+def split_rows(
+    metadata: pd.DataFrame, cfg: Config, device: torch.device
+) -> dict[str, torch.Tensor]:
+    """Row indices of each committed split, as tensors on `device`."""
+    split = assign_splits(metadata, load_splits(cfg)).to_numpy()
+    return {
+        name: torch.tensor(np.flatnonzero(split == name), device=device)
+        for name in SPLITS
+    }
 
 
 def save_splits(splits: dict[str, list[str]], cfg: Config) -> None:

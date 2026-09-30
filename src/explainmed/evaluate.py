@@ -3,6 +3,25 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+
+
+def metric_names(class_names: tuple[str, ...]) -> list[str]:
+    return [
+        "macro_f1",
+        "balanced_accuracy",
+        "accuracy",
+        *(f"recall_{name}" for name in class_names),
+    ]
+
+
+def summarise_runs(runs: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """Mean and standard deviation over seeds of each column, one row per model."""
+    by_model = runs.groupby("model", sort=False)
+    summary = by_model[columns].agg(["mean", "std"])
+    summary.columns = [f"{metric}_{stat}" for metric, stat in summary.columns]
+    summary.insert(0, "repeats", by_model.size())
+    return summary
 
 
 def confusion_matrix(

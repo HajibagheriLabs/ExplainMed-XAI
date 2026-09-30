@@ -1,38 +1,20 @@
 """Train image-only and text-only baselines under identical conditions and evaluate them."""
 
 import argparse
-import shutil
 from collections.abc import Callable
+from pathlib import Path
 
-import mlflow
-import numpy as np
 import pandas as pd
 import torch
 from torch import nn
 from transformers import logging as transformers_logging
 
 from explainmed.config import Config, load_config
-from explainmed.data import (
-    CLASSES,
-    SPLITS,
-    assign_splits,
-    load_images,
-    load_metadata,
-    load_splits,
-)
-from explainmed.evaluate import classification_metrics
+from explainmed.data import CLASSES, load_images, load_metadata, split_rows
+from explainmed.evaluate import metric_names, summarise_runs
 from explainmed.model import ImageClassifier, ImageEncoder, TextClassifier, TextEncoder
 from explainmed.text import describe_all, tokenize
-from explainmed.train import fit, flat_params, predict, resolve_device, start_mlflow
-
-METRIC_COLUMNS = [
-    "macro_f1",
-    "balanced_accuracy",
-    "accuracy",
-    *(f"recall_{name}" for name in CLASSES),
-    "val_macro_f1",
-    "best_epoch",
-]
+from explainmed.train import resolve_device, start_mlflow, train_and_evaluate
 
 
 def baselines(
@@ -68,85 +50,30 @@ def main() -> None:
     transformers_logging.set_verbosity_error()
 
     metadata = load_metadata(cfg.paths.metadata_csv, cfg.paths.images_dir)
-    split = assign_splits(metadata, load_splits(cfg)).to_numpy()
-    rows = {
-        name: torch.tensor(np.flatnonzero(split == name), device=device)
-        for name in SPLITS
-    }
-    labels = torch.tensor(metadata["label"].to_numpy(), device=device)
-    test_rows = rows["test"].cpu().numpy()
-    truth = metadata["label"].to_numpy()[test_rows]
-
-    run_root = cfg.paths.runs_dir / "baselines"
-    run_root.mkdir(parents=True, exist_ok=True)
-    shutil.copy(args.config, run_root / "config.yaml")
+    rows = split_rows(metadata, cfg, device)
     start_mlflow(cfg, "baselines")
-
     results = []
     for name, (inputs, build_model) in baselines(cfg, metadata, device).items():
-        for repeat in range(cfg.train.repeats):
-            seed = cfg.seed + repeat
-            run_dir = run_root / name / f"seed{seed}"
-            with mlflow.start_run(run_name=f"{name}_seed{seed}"):
-                mlflow.log_params({**flat_params(cfg), "model": name, "run_seed": seed})
-                model = build_model()
-                history = fit(
-                    model,
-                    inputs,
-                    labels,
-                    rows["train"],
-                    rows["val"],
-                    cfg,
-                    seed,
-                    run_dir / "best.pt",
-                )
-                for record in history:
-                    epoch_metrics = {k: v for k, v in record.items() if k != "epoch"}
-                    mlflow.log_metrics(epoch_metrics, step=record["epoch"])
-
-                model.load_state_dict(torch.load(run_dir / "best.pt"))
-                predicted, probabilities = predict(model, inputs, rows["test"], cfg)
-                metrics = classification_metrics(truth, predicted, CLASSES)
-                mlflow.log_metrics({f"test_{k}": v for k, v in metrics.items()})
-                mlflow.log_artifact(str(run_root / "config.yaml"))
-
-            best = max(history, key=lambda record: record["val_macro_f1"])
-            pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
-            pd.DataFrame(
-                {
-                    "image_id": metadata["image_id"].to_numpy()[test_rows],
-                    "label": truth,
-                    "predicted": predicted,
-                    **{f"prob_{c}": probabilities[:, i] for i, c in enumerate(CLASSES)},
-                }
-            ).to_csv(run_dir / "test_predictions.csv", index=False)
-            results.append(
-                {
-                    "model": name,
-                    "seed": seed,
-                    **metrics,
-                    "val_macro_f1": best["val_macro_f1"],
-                    "best_epoch": best["epoch"],
-                }
-            )
-            print(
-                f"{name} seed {seed}: test macro-F1 {metrics['macro_f1']:.4f}, "
-                f"balanced accuracy {metrics['balanced_accuracy']:.4f}, "
-                f"best epoch {best['epoch']}",
-                flush=True,
-            )
-            del model
-            torch.cuda.empty_cache()
+        results += train_and_evaluate(
+            name,
+            inputs,
+            build_model,
+            metadata,
+            rows,
+            cfg,
+            Path(args.config),
+            cfg.paths.runs_dir / "baselines",
+        )
 
     runs = pd.DataFrame(results)
-    summary = runs.groupby("model", sort=False)[METRIC_COLUMNS].agg(["mean", "std"])
-    summary.columns = [f"{metric}_{stat}" for metric, stat in summary.columns]
-    summary.insert(0, "repeats", cfg.train.repeats)
-
-    reports_dir = cfg.paths.reports_dir
+    summary = summarise_runs(
+        runs, [*metric_names(CLASSES), "val_macro_f1", "best_epoch"]
+    )
     csv_options = {"float_format": "%.4f", "lineterminator": "\n"}
-    runs.to_csv(reports_dir / "baselines_runs.csv", index=False, **csv_options)
-    summary.to_csv(reports_dir / "baselines.csv", **csv_options)
+    runs.to_csv(
+        cfg.paths.reports_dir / "baselines_runs.csv", index=False, **csv_options
+    )
+    summary.to_csv(cfg.paths.reports_dir / "baselines.csv", **csv_options)
     print(summary.T.to_string())
 
 
