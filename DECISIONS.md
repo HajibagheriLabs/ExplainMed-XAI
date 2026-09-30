@@ -98,3 +98,60 @@ lesions are a harder mix of classes.
 The model is an ImageNet ResNet-18 fine-tuned with hyperparameters fixed in the config before any
 result was seen. There is no model selection, so the validation split is unused and both protocols
 train on their training split only.
+
+## Text template: explicit phrase tables, one fixed sentence
+
+`src/explainmed/text.py` maps each metadata value to a phrase through lookup tables and assembles
+one sentence per image (`<patient> with a skin lesion <site>, imaged by dermatoscopy.`). There is no
+paraphrasing or random variation, so a reader can reconstruct exactly what the text branch sees,
+and an unexpected metadata value raises instead of producing an unseen phrase.
+`reports/text_examples.md` lists the tables and examples.
+
+The dataset-source column (`dataset`) is not templated either: which clinic an image came from is
+not a property of the lesion, and some sources are dominated by nevi.
+
+## Diagnosis method is excluded from the main text modality
+
+The playbook asked for age, sex, localisation, and diagnosis method. The first three are templated.
+The diagnosis method (`dx_type`) is not part of the main text modality because it is target
+leakage: it records how the ground truth was established, which follows from the diagnosis
+(suspicious lesions are excised for histopathology, benign-looking ones are followed up).
+In HAM10000, every follow-up image is a nevus, every confocal image is a benign keratosis, and
+every melanoma, basal cell carcinoma, and actinic keratosis is histopathology-confirmed
+(`reports/text_examples.md`). A model given this sentence would be partly reading the label.
+
+The template still supports it, and the text-only baseline is trained both ways. The row with the
+diagnosis method is reported as a measurement of the leak, not as a baseline to beat, and the
+fusion model uses the text without it.
+
+## Encoders
+
+The image encoder is an ImageNet EfficientNet-B0 trunk (global-average-pooled 1280-d features). It
+is small enough to fine-tune many times on one GPU, and a convolutional trunk gives Grad-CAM a
+natural target layer. The text encoder is `distilbert-base-uncased`, pooled at the [CLS] token.
+Each encoder plus a dropout and linear head is a standalone classifier, and the fusion model will
+reuse the same encoder classes.
+
+## Identical training conditions for every model
+
+Every model is trained by the same `fit` function: the committed lesion-grouped splits, AdamW,
+linear warmup then cosine decay, 20 epochs, batch 128, fp16 autocast, inverse-frequency class
+weights in the cross-entropy, and the checkpoint from the epoch with the best validation macro-F1.
+The test split is evaluated once per run. Each model is trained under three seeds and reported as
+mean and standard deviation, so that differences between models can be compared with seed noise.
+
+The only per-model setting is the learning rate of each pretrained encoder (EfficientNet 3e-4,
+DistilBERT 3e-5, heads 1e-3). These are the standard fine-tuning rates for each architecture and
+apply to that encoder in every model that contains it, including fusion. They were fixed before
+training and not tuned.
+
+Class weights are used because the headline metrics weight every class equally. Batch 128 keeps
+the GPU, not the single CPU thread that dispatches work to it, as the bottleneck. fp16 was chosen
+over bf16 because it trained EfficientNet-B0 faster on the reference GPU.
+
+## MLflow uses a SQLite store inside `mlruns/`
+
+MLflow 3.16 refuses the plain file store (`./mlruns`) unless an environment override is set. The
+tracking database is therefore `mlruns/mlflow.db` with artifacts under `mlruns/artifacts/`, which
+keeps every run in the gitignored `mlruns/` directory. Browse it with
+`mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`.
