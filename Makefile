@@ -41,6 +41,7 @@ leakage-demo:
 
 train:
 	$(PY) scripts/train_baselines.py --config $(CONFIG)
+	$(PY) scripts/train_fusion.py --config $(CONFIG)
 
 eval report:
 	$(error make $@ is not implemented yet)
