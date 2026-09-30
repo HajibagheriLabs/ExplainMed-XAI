@@ -60,3 +60,31 @@ class TextClassifier(nn.Module):
 
     def forward(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
         return self.head(self.encoder(batch["input_ids"], batch["attention_mask"]))
+
+
+class FusionClassifier(nn.Module):
+    """Late fusion: concatenated image and text features through a small MLP."""
+
+    def __init__(
+        self,
+        image_encoder: ImageEncoder,
+        text_encoder: TextEncoder,
+        num_classes: int,
+        hidden_dim: int,
+        dropout: float,
+    ) -> None:
+        super().__init__()
+        self.image_encoder = image_encoder
+        self.text_encoder = text_encoder
+        self.fusion = nn.Sequential(
+            nn.Dropout(dropout),
+            nn.Linear(image_encoder.out_dim + text_encoder.out_dim, hidden_dim),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, batch: dict[str, torch.Tensor]) -> torch.Tensor:
+        image = self.image_encoder(batch["images"])
+        text = self.text_encoder(batch["input_ids"], batch["attention_mask"])
+        return self.fusion(torch.cat([image, text], dim=1))

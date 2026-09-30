@@ -63,8 +63,10 @@ class DataConfig:
 class ModelConfig:
     text_encoder: str
     dropout: float
+    fusion_hidden_dim: int
 
     def __post_init__(self) -> None:
+        _require_positive("model", {"fusion_hidden_dim": self.fusion_hidden_dim})
         if not 0.0 <= self.dropout < 1.0:
             raise ValueError(f"model.dropout must be in [0, 1), got {self.dropout}")
 

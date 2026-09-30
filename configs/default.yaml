@@ -24,6 +24,7 @@ data:
 model:
   text_encoder: distilbert-base-uncased
   dropout: 0.2
+  fusion_hidden_dim: 256
 
 train:
   repeats: 3
