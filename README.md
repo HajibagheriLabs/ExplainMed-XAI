@@ -21,7 +21,8 @@ reported as failing.
 
 ## Status
 
-Data layer, unimodal baselines, and the fusion model are done; the explanation stages are not.
+Data layer, unimodal baselines, the fusion model, and the explanation methods are done; the
+faithfulness metrics and sanity checks are not.
 Test-split results, mean ± sd over three seeds:
 
 | Model      |        Macro-F1 | Balanced accuracy | Melanoma recall |
@@ -221,6 +222,37 @@ curve is logged to the local MLflow store in `mlruns/`. Reproduce the baselines 
 `make train`; a rerun of the fusion training on the same machine reproduced its per-seed results
 and confusion counts byte for byte.
 
+## Explanation methods
+
+Three attribution methods explain the fusion model's predicted class
+([`src/explainmed/explain.py`](src/explainmed/explain.py)):
+
+| Method               | Branch | Computation                                                                                          |
+| -------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| Grad-CAM             | image  | gradient-weighted activations of the last convolutional block (7×7), upsampled to 224×224            |
+| Integrated gradients | image  | gradients integrated along 64 steps from a mean-colour image, summed over colour channels            |
+| Attention rollout    | text   | attention flow from the [CLS] token through all six DistilBERT layers, residual connections included |
+
+All three return attributions in one convention: non-negative evidence for the explained class over
+the input grid of their modality (224×224 pixels, or tokens), scaled so each map's maximum is 1,
+with zero on [CLS], [SEP], and padding. Only positive evidence is kept: Grad-CAM's ReLU, and the
+positive part of integrated gradients. The faithfulness metrics and sanity checks consume that one
+format without special-casing a method. Grad-CAM and integrated gradients come from Captum and run
+batched on the GPU.
+
+`scripts/explain_examples.py` renders a seeded sample of test cases from the seed-42 fusion model:
+four correct and four incorrect predictions, each with a different true class
+([correct](reports/figures/explanations_correct.png), [incorrect](reports/figures/explanations_incorrect.png),
+case list in [`reports/explanation_examples.csv`](reports/explanation_examples.csv)).
+
+![Grad-CAM, integrated gradients, and attention rollout for four incorrect test predictions](reports/figures/explanations_incorrect.png)
+
+These figures illustrate the methods; they do not show that any of them is right. Two things they
+show are tested in the next stage. The two image methods disagree: Grad-CAM marks one blob on the
+lesion, while integrated gradients spreads isolated pixels over the lesion and the surrounding skin.
+And in all eight cases, attention rollout gives its largest weight to the closing full stop, with a
+similar profile over the remaining words of every sentence.
+
 ## Setup
 
 Requires Python 3.11 and an NVIDIA GPU with a CUDA 12 capable driver.
@@ -232,6 +264,7 @@ make test
 make data           # writes configs/splits.json, builds the image cache, writes dataset statistics
 make leakage-demo   # grouped versus naive split comparison
 make train          # baselines and fusion model, three seeds each
+make eval           # explanation figures
 ```
 
 `make setup` calls `python3.11` (`py -3.11` on Windows). Point it at a different interpreter with
@@ -250,7 +283,7 @@ which keeps CPU load low. `make lint` and `make test` need neither the dataset n
 | `make data`         | lesion-grouped splits, image cache, dataset statistics, text examples |
 | `make leakage-demo` | train under grouped and naive splits and compare                      |
 | `make train`        | train and evaluate the baselines and the fusion model                 |
-| `make eval`         | classification, faithfulness, and sanity checks (not implemented yet) |
+| `make eval`         | explanation figures (faithfulness and sanity checks to follow)        |
 | `make report`       | assemble `reports/` (not implemented yet)                             |
 
 Browse logged runs with `mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`.
