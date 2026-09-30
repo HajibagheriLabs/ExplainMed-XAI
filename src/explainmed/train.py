@@ -31,6 +31,11 @@ def seed_everything(seed: int) -> None:
     torch.backends.cudnn.deterministic = True
 
 
+def run_seeds(cfg: Config) -> list[int]:
+    """The seed of each training repeat; trained models are stored under these."""
+    return [cfg.seed + repeat for repeat in range(cfg.train.repeats)]
+
+
 def resolve_device(cfg: Config) -> torch.device:
     """Device named in the config, with the cpu thread cap applied."""
     if cfg.device == "cuda" and not torch.cuda.is_available():
@@ -217,8 +222,7 @@ def train_and_evaluate(
     shutil.copy(config_path, run_root / "config.yaml")
 
     results = []
-    for repeat in range(cfg.train.repeats):
-        seed = cfg.seed + repeat
+    for seed in run_seeds(cfg):
         run_dir = run_root / name / f"seed{seed}"
         with mlflow.start_run(run_name=f"{name}_seed{seed}"):
             mlflow.log_params({**flat_params(cfg), "model": name, "run_seed": seed})
