@@ -25,7 +25,13 @@ from explainmed.explain import attribute, load_fusion
 from explainmed.faithfulness import lesion_localisation, rank_correlation, unit_scores
 from explainmed.style import FIGURE_STYLE, SECONDARY_INK, SEQUENTIAL, SERIES
 from explainmed.text import describe_all, tokenize
-from explainmed.train import make_batch, predict, resolve_device, run_seeds
+from explainmed.train import (
+    make_batch,
+    predict,
+    resolve_device,
+    run_seeds,
+    seed_everything,
+)
 
 IMAGE_METHODS = ("grad_cam", "integrated_gradients")
 # each signal is oriented so that a higher score should mean a likelier error
@@ -285,6 +291,8 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config)
     device = resolve_device(cfg)
+    # deterministic cudnn kernels make gradient attributions reproducible to the bit
+    seed_everything(cfg.seed)
     transformers_logging.set_verbosity_error()
 
     metadata = load_metadata(cfg.paths.metadata_csv, cfg.paths.images_dir)

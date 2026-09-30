@@ -16,7 +16,7 @@ from explainmed.data import CLASSES, load_images, load_masks, load_metadata, spl
 from explainmed.explain import METHODS, attribute, content_tokens, load_fusion
 from explainmed.style import FIGURE_STYLE, SECONDARY_INK, SEQUENTIAL, SERIES
 from explainmed.text import describe_all, tokenize
-from explainmed.train import make_batch, predict, resolve_device
+from explainmed.train import make_batch, predict, resolve_device, seed_everything
 
 TITLES = {
     "grad_cam": "Grad-CAM",
@@ -133,6 +133,8 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config)
     device = resolve_device(cfg)
+    # deterministic cudnn kernels make gradient attributions reproducible to the bit
+    seed_everything(cfg.seed)
     transformers_logging.set_verbosity_error()
 
     metadata = load_metadata(cfg.paths.metadata_csv, cfg.paths.images_dir)

@@ -36,6 +36,7 @@ from explainmed.train import (
     predict,
     resolve_device,
     run_seeds,
+    seed_everything,
     start_mlflow,
 )
 
@@ -286,6 +287,8 @@ def main() -> None:
     args = parser.parse_args()
     cfg = load_config(args.config)
     device = resolve_device(cfg)
+    # deterministic cudnn kernels make gradient attributions reproducible to the bit
+    seed_everything(cfg.seed)
     transformers_logging.set_verbosity_error()
     fc = cfg.faithfulness
 
