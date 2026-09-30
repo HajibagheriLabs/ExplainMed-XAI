@@ -1,0 +1,38 @@
+check,method,step,layer,rank_correlation_mean,rank_correlation_std,top_overlap_mean,top_overlap_std,collapsed_mean,collapsed_std,images_mean,images_std
+independent_seed,grad_cam,0,another seed trained on true labels,0.8314,0.0211,0.7112,0.0083,0.0000,0.0000,200.0000,0.0000
+independent_seed,integrated_gradients,0,another seed trained on true labels,0.4108,0.0315,0.1403,0.0131,0.0000,0.0000,200.0000,0.0000
+independent_seed,attention_rollout,0,another seed trained on true labels,0.9662,0.0080,0.8903,0.0691,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,1,fusion.4,0.1147,0.3163,0.2601,0.2320,0.0283,0.0284,200.0000,0.0000
+model_randomisation,integrated_gradients,1,fusion.4,0.7184,0.0925,0.3806,0.0534,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,2,fusion.1,0.3047,0.0402,0.2613,0.0663,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,2,fusion.1,0.6848,0.0982,0.3503,0.0701,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,3,image_encoder.features.8,0.0953,0.1296,0.1857,0.0621,0.0033,0.0029,200.0000,0.0000
+model_randomisation,integrated_gradients,3,image_encoder.features.8,0.6780,0.0834,0.3389,0.0660,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,4,image_encoder.features.7,0.0015,0.1393,0.0749,0.0275,0.0117,0.0202,200.0000,0.0000
+model_randomisation,integrated_gradients,4,image_encoder.features.7,0.6290,0.1328,0.2941,0.0887,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,5,image_encoder.features.6,0.1042,0.0406,0.0800,0.0238,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,5,image_encoder.features.6,0.4833,0.0655,0.1676,0.0209,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,6,image_encoder.features.5,0.0144,0.1396,0.0629,0.0284,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,6,image_encoder.features.5,0.4418,0.0465,0.1358,0.0231,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,7,image_encoder.features.4,0.1423,0.0777,0.0847,0.0220,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,7,image_encoder.features.4,0.4016,0.0953,0.1032,0.0195,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,8,image_encoder.features.3,0.0645,0.1359,0.0697,0.0401,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,8,image_encoder.features.3,0.4411,0.0889,0.1152,0.0243,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,9,image_encoder.features.2,0.1098,0.0858,0.0903,0.0530,0.0000,0.0000,200.0000,0.0000
+model_randomisation,integrated_gradients,9,image_encoder.features.2,0.4919,0.0748,0.1453,0.0247,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,10,image_encoder.features.1,0.1431,0.0869,0.0829,0.0348,0.0233,0.0252,200.0000,0.0000
+model_randomisation,integrated_gradients,10,image_encoder.features.1,0.4750,0.0748,0.1404,0.0206,0.0000,0.0000,200.0000,0.0000
+model_randomisation,grad_cam,11,image_encoder.features.0,0.1195,0.1218,0.1058,0.0441,0.0033,0.0058,200.0000,0.0000
+model_randomisation,integrated_gradients,11,image_encoder.features.0,0.3747,0.0989,0.1221,0.0181,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,1,fusion.4,1.0000,0.0000,1.0000,0.0000,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,2,fusion.1,1.0000,0.0000,1.0000,0.0000,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,3,text_encoder.transformer.transformer.layer.5,0.9790,0.0066,0.9402,0.0798,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,4,text_encoder.transformer.transformer.layer.4,0.9154,0.0369,0.9319,0.0941,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,5,text_encoder.transformer.transformer.layer.3,0.8215,0.0278,0.8875,0.0733,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,6,text_encoder.transformer.transformer.layer.2,0.5770,0.0481,0.7203,0.1947,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,7,text_encoder.transformer.transformer.layer.1,-0.1460,0.0169,0.0357,0.0311,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,8,text_encoder.transformer.transformer.layer.0,-0.3801,0.1203,0.0007,0.0012,0.0000,0.0000,200.0000,0.0000
+model_randomisation,attention_rollout,9,text_encoder.transformer.embeddings,0.1459,0.3042,0.0185,0.0294,0.0000,0.0000,200.0000,0.0000
+label_randomisation,grad_cam,0,retrained on shuffled labels,0.5011,0.0606,0.4096,0.0302,0.0000,0.0000,200.0000,0.0000
+label_randomisation,integrated_gradients,0,retrained on shuffled labels,0.3747,0.0585,0.1157,0.0114,0.0000,0.0000,200.0000,0.0000
+label_randomisation,attention_rollout,0,retrained on shuffled labels,0.8858,0.0291,0.8897,0.0714,0.0000,0.0000,200.0000,0.0000

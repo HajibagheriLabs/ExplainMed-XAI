@@ -1,0 +1,4 @@
+method,threshold,first_step_similarity,final_step_similarity,highest_similarity,highest_similarity_layer,passes_model_randomisation,label_randomisation_similarity,passes_label_randomisation,independent_seed_similarity,verdict
+grad_cam,0.5000,0.1147,0.1195,0.4606,fusion.4,True,0.5011,False,0.8314,fails label randomisation
+integrated_gradients,0.5000,0.7184,0.3747,0.7857,fusion.1,False,0.3747,True,0.4108,fails model randomisation
+attention_rollout,0.5000,1.0000,0.1459,1.0000,fusion.4,False,0.8858,False,0.9662,fails both checks

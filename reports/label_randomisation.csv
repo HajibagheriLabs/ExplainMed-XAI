@@ -1,0 +1,4 @@
+seed,epochs,best_epoch,train_macro_f1_shuffled_labels,test_macro_f1_true_labels,test_balanced_accuracy_true_labels
+42,10,10,0.3968,0.1124,0.1587
+43,10,10,0.3785,0.1010,0.1260
+44,10,9,0.3671,0.1106,0.1656
