@@ -11,7 +11,7 @@ PYTHON ?= python3.11
 PY := $(VENV)/bin/python
 endif
 
-.PHONY: setup test lint format data train eval report
+.PHONY: setup test lint format data leakage-demo train eval report
 
 $(PY):
 	$(PYTHON) -m venv $(VENV)
@@ -31,5 +31,12 @@ format:
 	$(PY) -m ruff format .
 	$(PY) -m ruff check --fix .
 
-data train eval report:
+data:
+	$(PY) scripts/prepare_data.py --config $(CONFIG)
+	$(PY) scripts/inspect_data.py --config $(CONFIG)
+
+leakage-demo:
+	$(PY) scripts/leakage_demo.py --config $(CONFIG)
+
+train eval report:
 	$(error make $@ is not implemented yet)
