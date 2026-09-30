@@ -187,3 +187,29 @@ the baseline script seeded only inside `fit`, after construction, so head initia
 on the RNG state left by earlier runs, and a single run could not be reproduced on its own.
 `train_and_evaluate` now seeds before building each model. The baselines were retrained after this
 fix, so their committed results come from the current code.
+
+## Attribution methods share one output convention
+
+Every method explains the class the model predicted, because that is the decision a reader would be
+shown an explanation for. Each returns non-negative evidence for that class over its modality's
+input grid, scaled to a maximum of 1: pixels for the image methods and tokens for the text method.
+Negative evidence is dropped (Grad-CAM's ReLU, the positive part of integrated gradients), so every
+map answers the same question. Faithfulness metrics and sanity checks then treat all methods alike,
+and the only modality-specific code is how a pixel or a token is removed.
+
+Grad-CAM targets the last convolutional block of EfficientNet-B0, the deepest layer that still has
+spatial resolution (7×7). Integrated gradients uses 64 steps from a baseline of zeros after
+normalisation, which is the ImageNet mean colour. A black baseline would scale each pixel's
+attribution by its distance from black, giving the darkest structures, pigment networks and
+blotches, the least attribution. Attention rollout averages heads, adds the identity for the
+residual connection, and multiplies through the layers (Abnar and Zuidema, 2020). It does not depend
+on the class being explained, and the sanity checks test what that implies.
+
+Grad-CAM and integrated gradients come from Captum, which runs batched on the GPU against the fusion
+model with the text held fixed. The `grad-cam` package was dropped because it resizes every map
+with OpenCV on the CPU.
+
+In the example figures, image maps saturate at their 99th percentile, because integrated gradients
+concentrates on a few pixels and would otherwise be invisible. Word pieces are merged into words
+for display, each word taking its strongest piece's weight. Both are display choices only; every
+metric uses the raw maps.
