@@ -1,0 +1,9 @@
+group,image_id,true_class,predicted_class,probability
+correct,ISIC_0030263,nv,nv,0.8609
+correct,ISIC_0029133,akiec,akiec,0.9998
+correct,ISIC_0029574,mel,mel,0.9751
+correct,ISIC_0029439,vasc,vasc,1.0000
+incorrect,ISIC_0031649,nv,bkl,0.9904
+incorrect,ISIC_0032149,mel,bkl,0.7861
+incorrect,ISIC_0024422,bkl,nv,0.4075
+incorrect,ISIC_0027829,akiec,bkl,0.9512

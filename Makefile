@@ -43,5 +43,8 @@ train:
 	$(PY) scripts/train_baselines.py --config $(CONFIG)
 	$(PY) scripts/train_fusion.py --config $(CONFIG)
 
-eval report:
+eval:
+	$(PY) scripts/explain_examples.py --config $(CONFIG)
+
+report:
 	$(error make $@ is not implemented yet)
