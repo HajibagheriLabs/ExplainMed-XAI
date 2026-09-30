@@ -5,7 +5,9 @@ from __future__ import annotations
 import torch
 from torch import nn
 from torchvision.models import EfficientNet_B0_Weights, efficientnet_b0
-from transformers import AutoModel
+from transformers import AutoConfig, AutoModel, PretrainedConfig
+
+from explainmed.config import ModelConfig
 
 
 class ImageEncoder(nn.Module):
@@ -26,9 +28,14 @@ class ImageEncoder(nn.Module):
 class TextEncoder(nn.Module):
     """DistilBERT mapping token ids to the hidden state of the [CLS] token."""
 
-    def __init__(self, pretrained_name: str) -> None:
+    def __init__(self, source: str | PretrainedConfig) -> None:
         super().__init__()
-        self.transformer = AutoModel.from_pretrained(pretrained_name)
+        # a config builds untrained weights, for checkpoints and tests that skip the download
+        self.transformer = (
+            AutoModel.from_config(source)
+            if isinstance(source, PretrainedConfig)
+            else AutoModel.from_pretrained(source)
+        )
         self.out_dim = self.transformer.config.dim
 
     def forward(
@@ -88,3 +95,19 @@ class FusionClassifier(nn.Module):
         image = self.image_encoder(batch["images"])
         text = self.text_encoder(batch["input_ids"], batch["attention_mask"])
         return self.fusion(torch.cat([image, text], dim=1))
+
+
+def build_fusion(
+    cfg: ModelConfig, num_classes: int, pretrained: bool
+) -> FusionClassifier:
+    """The configured fusion model, from pretrained encoders or untrained for loading."""
+    text_source = (
+        cfg.text_encoder if pretrained else AutoConfig.from_pretrained(cfg.text_encoder)
+    )
+    return FusionClassifier(
+        ImageEncoder(pretrained),
+        TextEncoder(text_source),
+        num_classes,
+        cfg.fusion_hidden_dim,
+        cfg.dropout,
+    )

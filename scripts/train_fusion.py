@@ -22,7 +22,7 @@ from explainmed.evaluate import (
     metric_names,
     summarise_runs,
 )
-from explainmed.model import FusionClassifier, ImageEncoder, TextEncoder
+from explainmed.model import build_fusion
 from explainmed.style import FIGURE_STYLE, INK, SEQUENTIAL, SURFACE
 from explainmed.text import describe_all, tokenize
 from explainmed.train import predict, resolve_device, start_mlflow, train_and_evaluate
@@ -134,13 +134,7 @@ def main() -> None:
     }
 
     def build_model() -> nn.Module:
-        return FusionClassifier(
-            ImageEncoder(pretrained=True),
-            TextEncoder(cfg.model.text_encoder),
-            len(CLASSES),
-            cfg.model.fusion_hidden_dim,
-            cfg.model.dropout,
-        )
+        return build_fusion(cfg.model, len(CLASSES), pretrained=True)
 
     run_root = cfg.paths.runs_dir / "fusion"
     start_mlflow(cfg, "fusion")
