@@ -1,0 +1,7 @@
+pair,measure,mean,std
+grad_cam vs integrated_gradients,rank_correlation,0.1204,0.1648
+grad_cam vs integrated_gradients,top_overlap,0.1256,0.0592
+grad_cam vs random_image,rank_correlation,-0.0005,0.0018
+grad_cam vs random_image,top_overlap,0.0523,0.0002
+integrated_gradients vs random_image,rank_correlation,0.0015,0.0011
+integrated_gradients vs random_image,top_overlap,0.0528,0.0009
