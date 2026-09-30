@@ -20,7 +20,7 @@ def test_default_config_loads_with_typed_fields() -> None:
     cfg = load_config(DEFAULT_CONFIG)
     assert isinstance(cfg.seed, int)
     assert isinstance(cfg.paths.metadata_csv, Path)
-    assert isinstance(cfg.train.lr, float)
+    assert isinstance(cfg.train.head_lr, float)
     assert cfg.data.val_fraction + cfg.data.test_fraction < 1.0
 
 
@@ -34,4 +34,4 @@ def test_invalid_values_are_rejected(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="leave a training set"):
         load_config(_write_variant(tmp_path, "data", "val_fraction", 0.9))
     with pytest.raises(TypeError, match="expected float"):
-        load_config(_write_variant(tmp_path, "train", "lr", "1e-4"))
+        load_config(_write_variant(tmp_path, "train", "head_lr", "1e-4"))

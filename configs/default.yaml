@@ -21,14 +21,25 @@ data:
   val_fraction: 0.15
   test_fraction: 0.15
 
+model:
+  text_encoder: distilbert-base-uncased
+  dropout: 0.2
+
 train:
-  batch_size: 64
-  epochs: 10
-  lr: 3.0e-4
-  weight_decay: 1.0e-4
+  repeats: 3
+  # batches of 128 keep the gpu, not the single dispatching cpu core, as the bottleneck
+  batch_size: 128
+  epochs: 20
+  head_lr: 1.0e-3
+  image_encoder_lr: 3.0e-4
+  text_encoder_lr: 3.0e-5
+  weight_decay: 1.0e-2
+  warmup_fraction: 0.1
+  balanced_loss: true
 
 leakage_demo:
   repeats: 5
   epochs: 12
   batch_size: 64
   lr: 5.0e-4
+  weight_decay: 1.0e-4

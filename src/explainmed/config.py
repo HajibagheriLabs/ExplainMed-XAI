@@ -10,6 +10,12 @@ from typing import Any, get_args, get_origin, get_type_hints
 import yaml
 
 
+def _require_positive(section: str, values: dict[str, float]) -> None:
+    for name, value in values.items():
+        if value <= 0:
+            raise ValueError(f"{section}.{name} must be positive, got {value}")
+
+
 @dataclass(frozen=True)
 class PathsConfig:
     metadata_csv: Path
@@ -31,11 +37,13 @@ class DataConfig:
     test_fraction: float
 
     def __post_init__(self) -> None:
-        for name in ("image_size", "decode_batch_size"):
-            if getattr(self, name) <= 0:
-                raise ValueError(
-                    f"data.{name} must be positive, got {getattr(self, name)}"
-                )
+        _require_positive(
+            "data",
+            {
+                "image_size": self.image_size,
+                "decode_batch_size": self.decode_batch_size,
+            },
+        )
         for name in ("normalize_mean", "normalize_std"):
             if len(getattr(self, name)) != 3:
                 raise ValueError(f"data.{name} must have one value per rgb channel")
@@ -52,23 +60,46 @@ class DataConfig:
 
 
 @dataclass(frozen=True)
-class TrainConfig:
-    batch_size: int
-    epochs: int
-    lr: float
-    weight_decay: float
+class ModelConfig:
+    text_encoder: str
+    dropout: float
 
     def __post_init__(self) -> None:
-        for name in ("batch_size", "epochs"):
-            if getattr(self, name) <= 0:
-                raise ValueError(
-                    f"train.{name} must be positive, got {getattr(self, name)}"
-                )
-        if self.lr <= 0:
-            raise ValueError(f"train.lr must be positive, got {self.lr}")
+        if not 0.0 <= self.dropout < 1.0:
+            raise ValueError(f"model.dropout must be in [0, 1), got {self.dropout}")
+
+
+@dataclass(frozen=True)
+class TrainConfig:
+    repeats: int
+    batch_size: int
+    epochs: int
+    head_lr: float
+    image_encoder_lr: float
+    text_encoder_lr: float
+    weight_decay: float
+    warmup_fraction: float
+    balanced_loss: bool
+
+    def __post_init__(self) -> None:
+        _require_positive(
+            "train",
+            {
+                "repeats": self.repeats,
+                "batch_size": self.batch_size,
+                "epochs": self.epochs,
+                "head_lr": self.head_lr,
+                "image_encoder_lr": self.image_encoder_lr,
+                "text_encoder_lr": self.text_encoder_lr,
+            },
+        )
         if self.weight_decay < 0:
             raise ValueError(
                 f"train.weight_decay must be non-negative, got {self.weight_decay}"
+            )
+        if not 0.0 <= self.warmup_fraction < 1.0:
+            raise ValueError(
+                f"train.warmup_fraction must be in [0, 1), got {self.warmup_fraction}"
             )
 
 
@@ -78,15 +109,22 @@ class LeakageDemoConfig:
     epochs: int
     batch_size: int
     lr: float
+    weight_decay: float
 
     def __post_init__(self) -> None:
-        for name in ("repeats", "epochs", "batch_size"):
-            if getattr(self, name) <= 0:
-                raise ValueError(
-                    f"leakage_demo.{name} must be positive, got {getattr(self, name)}"
-                )
-        if self.lr <= 0:
-            raise ValueError(f"leakage_demo.lr must be positive, got {self.lr}")
+        _require_positive(
+            "leakage_demo",
+            {
+                "repeats": self.repeats,
+                "epochs": self.epochs,
+                "batch_size": self.batch_size,
+                "lr": self.lr,
+            },
+        )
+        if self.weight_decay < 0:
+            raise ValueError(
+                f"leakage_demo.weight_decay must be non-negative, got {self.weight_decay}"
+            )
 
 
 @dataclass(frozen=True)
@@ -96,14 +134,14 @@ class Config:
     cpu_threads: int
     paths: PathsConfig
     data: DataConfig
+    model: ModelConfig
     train: TrainConfig
     leakage_demo: LeakageDemoConfig
 
     def __post_init__(self) -> None:
         if self.device not in ("cuda", "cpu"):
             raise ValueError(f"device must be 'cuda' or 'cpu', got {self.device!r}")
-        if self.cpu_threads <= 0:
-            raise ValueError(f"cpu_threads must be positive, got {self.cpu_threads}")
+        _require_positive("config", {"cpu_threads": self.cpu_threads})
 
 
 def load_config(path: str | Path) -> Config:

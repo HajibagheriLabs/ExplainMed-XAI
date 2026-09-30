@@ -73,7 +73,7 @@ def fit_and_predict(
     model.fc = torch.nn.Linear(model.fc.in_features, len(CLASSES))
     model.to(device)
     optimizer = torch.optim.AdamW(
-        model.parameters(), lr=demo.lr, weight_decay=cfg.train.weight_decay
+        model.parameters(), lr=demo.lr, weight_decay=demo.weight_decay
     )
     steps_per_epoch = -(-len(train_rows) // demo.batch_size)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
