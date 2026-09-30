@@ -1,0 +1,4 @@
+split,repeats,n_train_mean,n_train_std,n_test_mean,n_test_std,test_images_with_lesion_in_train_mean,test_images_with_lesion_in_train_std,accuracy_mean,accuracy_std,balanced_accuracy_mean,balanced_accuracy_std,macro_f1_mean,macro_f1_std,accuracy_single_image_lesions_mean,accuracy_single_image_lesions_std,accuracy_multi_image_lesions_mean,accuracy_multi_image_lesions_std
+lesion_grouped,5,7023.6000,25.9480,1505.8000,18.2538,0.0000,0.0000,0.8493,0.0084,0.6989,0.0254,0.7239,0.0158,0.9207,0.0085,0.7627,0.0222
+image_naive,5,7009.0000,0.0000,1503.0000,0.0000,534.8000,17.7257,0.8754,0.0095,0.7644,0.0238,0.7860,0.0208,0.9238,0.0092,0.8166,0.0180
+naive_minus_grouped,5,-14.6000,25.9480,-2.8000,18.2538,534.8000,17.7257,0.0261,0.0101,0.0655,0.0178,0.0621,0.0231,0.0032,0.0032,0.0539,0.0235
