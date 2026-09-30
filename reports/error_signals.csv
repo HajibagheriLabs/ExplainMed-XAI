@@ -1,0 +1,5 @@
+signal,auroc_for_errors_mean,auroc_for_errors_std
+model confidence,0.8490,0.0101
+Grad-CAM mass in lesion,0.5326,0.0348
+Grad-CAM peak in lesion,0.5152,0.0060
+integrated gradients mass in lesion,0.5418,0.0119

@@ -1,0 +1,4 @@
+seed,test_images,wrong,confidently_wrong,confidently_wrong_with_plausible_explanation,of_which_missed_malignancy,missed_malignancy,missed_malignancy_confident,correct_median_mass_in_lesion,plausible_share_correct,plausible_share_wrong,plausible_share_confidently_wrong,grad_cam_predicted_vs_true_class_when_wrong
+42,1497,243,93,44,13,68,27,0.7598,0.4984,0.4444,0.4731,0.4909
+43,1497,260,87,41,13,59,24,0.6944,0.4956,0.5231,0.4713,0.5379
+44,1497,244,99,47,17,62,30,0.7676,0.4988,0.4467,0.4747,0.6218

@@ -1,0 +1,13 @@
+seed,signal,auroc_for_errors,images
+42,model confidence,0.8525,1497
+42,Grad-CAM mass in lesion,0.5499,1497
+42,Grad-CAM peak in lesion,0.5203,1497
+42,integrated gradients mass in lesion,0.5381,1497
+43,model confidence,0.8569,1497
+43,Grad-CAM mass in lesion,0.4926,1496
+43,Grad-CAM peak in lesion,0.5086,1496
+43,integrated gradients mass in lesion,0.5321,1497
+44,model confidence,0.8376,1497
+44,Grad-CAM mass in lesion,0.5554,1494
+44,Grad-CAM peak in lesion,0.5167,1494
+44,integrated gradients mass in lesion,0.5551,1497
