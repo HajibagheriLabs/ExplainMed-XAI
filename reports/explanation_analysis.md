@@ -99,7 +99,7 @@ image.
 **Verdict: fails.** Integrated gradients, as configured here, is not a valid explanation of this
 model's prediction.
 
-## Attention rollout: explains the language model, not the classifier
+## Attention rollout: explains the text encoder, not the classifier
 
 **Model randomisation: fails.** Randomising both layers of the fusion classifier leaves the rollout
 map unchanged (rank correlation 1.00), because rollout never reads the classifier. It stays above
