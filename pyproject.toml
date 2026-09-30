@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "explainmed"
+version = "0.1.0"
+description = "Interpretable multimodal skin-lesion classification with evaluated explanations"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "torch==2.14.*",
+    "torchvision==0.29.*",
+    "transformers==5.17.*",
+    "captum==0.9.*",
+    "grad-cam==1.5.*",
+    "numpy==2.4.*",
+    "pandas==3.0.*",
+    "scikit-learn==1.9.*",
+    "matplotlib==3.11.*",
+    "pillow==12.3.*",
+    "mlflow==3.16.*",
+    "pyyaml==6.0.*",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.*",
+    "ruff==0.16.*",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
