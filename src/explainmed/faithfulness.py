@@ -185,7 +185,6 @@ def _perturb(
     mode: str,
     cfg: FaithfulnessConfig,
 ) -> Batch:
-    # deletion hides the selected units; insertion shows only them
     hidden = selected if mode == "deletion" else ~selected
     if modality == "text":
         visible = batch["attention_mask"].bool() & (
