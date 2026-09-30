@@ -34,9 +34,13 @@ format:
 data:
 	$(PY) scripts/prepare_data.py --config $(CONFIG)
 	$(PY) scripts/inspect_data.py --config $(CONFIG)
+	$(PY) scripts/text_examples.py --config $(CONFIG)
 
 leakage-demo:
 	$(PY) scripts/leakage_demo.py --config $(CONFIG)
 
-train eval report:
+train:
+	$(PY) scripts/train_baselines.py --config $(CONFIG)
+
+eval report:
 	$(error make $@ is not implemented yet)
