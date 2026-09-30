@@ -15,7 +15,6 @@ dependencies = [
     "torchvision==0.29.*",
     "transformers==5.17.*",
     "captum==0.9.*",
-    "grad-cam==1.5.*",
     "numpy==2.4.*",
     "pandas==3.0.*",
     "scikit-learn==1.9.*",
