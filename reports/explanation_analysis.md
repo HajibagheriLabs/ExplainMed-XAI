@@ -43,9 +43,9 @@ image is back. The highlighted region is necessary for the prediction but not su
 also uses the surrounding skin and the lesion border, which Grad-CAM ranks low.
 
 **Localisation and sparsity: strong.** On average, 69% of Grad-CAM attribution falls inside the
-lesion segmentation, against the 27% a map without information would place there. Its peak lies
-inside the lesion for 98% of images, against 27% by chance. It is the most concentrated of the three
-methods, with a Gini index of 0.70 against 0.33 for random attribution.
+lesion segmentation, against the 26.5% a map without information would place there. Its peak lies
+inside the lesion for 98% of images, against 26.5% by chance. It is the most concentrated of the
+three methods, with a Gini index of 0.70 against 0.33 for random attribution.
 
 **Model randomisation: passes.** Randomising only the classifier's output layer drops the mean rank
 correlation with the original map to 0.11, and it stays low down to the stem. The highest single
@@ -57,9 +57,9 @@ chance on the true test labels (macro-F1 0.10–0.11,
 [`label_randomisation.csv`](label_randomisation.csv)). Its Grad-CAM maps still correlate at 0.50
 with those of the real model: 0.45, 0.49, and 0.57 across the three seeds. The last value crosses
 the threshold. That is well below the 0.83 between two models trained on true labels, so the maps do
-change. But half of the similarity survives a model that learned nothing about the diagnosis. Part
-of what Grad-CAM shows is where the lesion is, the salient object any network trained on these
-images attends to, rather than evidence for the class.
+change. But a model that learned nothing about the diagnosis still produces maps correlating at 0.50
+with the real ones. Part of what Grad-CAM shows is where the lesion is, the salient object any
+network trained on these images attends to, rather than evidence for the class.
 
 **Verdict: fails the label-randomisation check.** It is the best-behaved method here and a useful
 coarse indicator of which region the model depends on. Its good localisation is partly
@@ -86,9 +86,10 @@ sensitivity to what the model learned.
 **Faithfulness: fragile.** Deletion beats random with the blurred reference (−0.043) but not
 consistently with the mean-colour reference (−0.020). Insertion is worse than random (−0.041).
 
-**Localisation: at chance.** 27% of the attribution falls inside the lesion, exactly the lesion's
-share of the image (27%), and the peak lands in the lesion for 46% of images. The map is spread over
-lesion and background skin alike. Its Gini index of 0.36 is barely above random attribution (0.33).
+**Localisation: close to chance.** 27% of the attribution falls inside the lesion, against the
+lesion's 26.5% share of the image, so the map is spread over lesion and background skin alike. Its
+peak lands in the lesion for 46% of images, above the 26.5% chance level but far below Grad-CAM's
+98%. Its Gini index of 0.36 is barely above random attribution (0.33).
 
 **Agreement with Grad-CAM: close to none.** The two image methods correlate at 0.12, and their
 top-10% regions overlap by 0.13 intersection over union, against 0.05 for two random maps
