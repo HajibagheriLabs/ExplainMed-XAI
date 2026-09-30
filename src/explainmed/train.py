@@ -103,7 +103,7 @@ def fit(
         losses = []
         order = torch.randperm(len(train_rows), generator=generator, device=device)
         for rows in train_rows[order].split(tc.batch_size):
-            batch = _batch(inputs, rows, cfg, generator)
+            batch = make_batch(inputs, rows, cfg, generator)
             with torch.autocast(device.type, dtype=torch.float16, enabled=use_amp):
                 loss = F.cross_entropy(model(batch), labels[rows], weight=weight)
             optimizer.zero_grad(set_to_none=True)
@@ -141,19 +141,19 @@ def predict(
     probabilities = []
     for chunk in rows.split(cfg.train.batch_size):
         with torch.autocast(rows.device.type, dtype=torch.float16, enabled=use_amp):
-            logits = model(_batch(inputs, chunk, cfg, generator=None))
+            logits = model(make_batch(inputs, chunk, cfg, generator=None))
         probabilities.append(logits.float().softmax(dim=1))
     probabilities = torch.cat(probabilities).cpu().numpy()
     return probabilities.argmax(axis=1), probabilities
 
 
-def _batch(
+def make_batch(
     inputs: dict[str, torch.Tensor],
     rows: torch.Tensor,
     cfg: Config,
     generator: torch.Generator | None,
 ) -> dict[str, torch.Tensor]:
-    # a generator means training, so images get augmented
+    """Model inputs for `rows`, augmented when a generator is given, else eval-transformed."""
     batch = {name: tensor[rows] for name, tensor in inputs.items()}
     if "images" in batch:
         batch["images"] = (
