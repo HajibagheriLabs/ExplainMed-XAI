@@ -1,8 +1,8 @@
 # ExplainMed-XAI
 
 Multimodal skin-lesion classification on HAM10000 where the explanations are **measured, not
-illustrated**. Grad-CAM and integrated gradients on the image branch, and attention on the text
-branch, are scored with faithfulness metrics (deletion and insertion AUC against a
+illustrated**. Grad-CAM and integrated gradients on the image branch, and attention rollout on the
+text branch, are scored with faithfulness metrics (deletion and insertion AUC against a
 random-attribution control, sparsity, localisation, inter-method agreement) and put through the
 Adebayo et al. model- and label-randomisation sanity checks. A method that fails a check is
 reported as failing.
@@ -19,11 +19,17 @@ reported as failing.
 > dermatoscopy."* It is not real clinical documentation, and results on it say nothing about how a
 > model would behave on genuine clinical notes. See [`reports/text_examples.md`](reports/text_examples.md).
 
-## Status
+## The problem
 
-Data layer, unimodal baselines, fusion, the explanation methods, their faithfulness metrics, and
-the sanity checks are done.
-Test-split results, mean ± sd over three seeds:
+Saliency maps are routinely shown next to medical image predictions, as if a heatmap on the lesion
+justified the diagnosis. Whether a map reflects what the model computed, rather than what a reader
+expects to see, is rarely checked. This repo trains a multimodal skin-lesion classifier and then
+evaluates its explanations the way one would evaluate a model: against a control, with sanity checks
+that a valid explanation must pass, and on the model's own errors.
+
+## Results at a glance
+
+Test split, mean ± sd over three training seeds ([`reports/results.csv`](reports/results.csv)):
 
 | Model      |        Macro-F1 | Balanced accuracy | Melanoma recall |
 | ---------- | --------------: | ----------------: | --------------: |
@@ -31,8 +37,24 @@ Test-split results, mean ± sd over three seeds:
 | Text only  | 0.2266 ± 0.0061 |   0.3206 ± 0.0085 | 0.1687 ± 0.0656 |
 | Fusion     | 0.7216 ± 0.0111 |   0.7146 ± 0.0062 | 0.6885 ± 0.0034 |
 
-Every number in this README is produced by a script in this repo; a result whose run does not exist
-yet is written as `TBD`.
+| Explanation method   | vs random: deletion / insertion | Model randomisation | Label randomisation |
+| -------------------- | ------------------------------- | ------------------- | ------------------- |
+| Grad-CAM             | better / worse                  | passes              | **fails**           |
+| Integrated gradients | better / worse                  | **fails**           | passes              |
+| Attention rollout    | better / better                 | **fails**           | **fails**           |
+
+- **No explanation method passes every check.** Attention rollout fails both sanity checks,
+  integrated gradients fails model randomisation, and Grad-CAM fails label randomisation narrowly.
+- **Explanations do not flag errors.** How well Grad-CAM's map sits on the lesion separates wrong
+  from correct predictions at an AUROC of 0.53, against 0.85 for the model's own confidence.
+- **Confident errors come with plausible maps.** 47% of predictions that are wrong with a probability
+  of at least 0.9 have a Grad-CAM map as well placed as a typical correct one. That includes
+  melanomas called benign moles with near certainty.
+- **The synthetic text adds nothing measurable.** Fusion matches the image-only model within seed
+  noise.
+
+Every result in this README is produced by a script in this repo and written to
+[`reports/`](reports/).
 
 ## Dataset
 
@@ -68,7 +90,10 @@ Download the dataset and place it as:
 ```
 data/raw/ham10000/HAM10000_metadata.csv
 data/raw/ham10000/images/ISIC_*.jpg
+data/raw/ham10000/segmentations/ISIC_*_segmentation.png
 ```
+
+The segmentation masks are only needed by `make eval`, for the localisation metrics.
 
 MIMIC-CXR was deliberately not used: it requires credentialed access, so nobody could rerun this
 repo end to end.
@@ -203,6 +228,18 @@ drops fusion to chance (balanced accuracy 0.145 against 1/7): the text cannot ca
 on its own. The fusion model has learned to lean on a weak signal that, on this data, buys nothing
 the image did not already provide.
 
+Per-class recall of the fusion model, next to the image-only baseline:
+
+| Class recall                                            |      Image only |          Fusion |
+| ------------------------------------------------------- | --------------: | --------------: |
+| actinic keratosis / intraepithelial carcinoma (`akiec`) | 0.7582 ± 0.0566 | 0.7908 ± 0.0113 |
+| basal cell carcinoma (`bcc`)                            | 0.7619 ± 0.0825 | 0.7316 ± 0.0641 |
+| benign keratosis-like lesion (`bkl`)                    | 0.6921 ± 0.0224 | 0.6943 ± 0.0169 |
+| dermatofibroma (`df`)                                   | 0.5455 ± 0.0909 | 0.5606 ± 0.0694 |
+| melanoma (`mel`)                                        | 0.6905 ± 0.0273 | 0.6885 ± 0.0034 |
+| melanocytic nevus (`nv`)                                | 0.8977 ± 0.0095 | 0.9003 ± 0.0150 |
+| vascular lesion (`vasc`)                                | 0.6212 ± 0.0525 | 0.6364 ± 0.0909 |
+
 ### Melanoma recall
 
 Melanoma is the class where a miss matters most, and neither model is good at it. Recall is
@@ -248,7 +285,7 @@ case list in [`reports/explanation_examples.csv`](reports/explanation_examples.c
 ![Grad-CAM, integrated gradients, and attention rollout for four incorrect test predictions](reports/figures/explanations_incorrect.png)
 
 These figures illustrate the methods; they do not show that any of them is right. Two things they
-show are tested in the next stage. The two image methods disagree: Grad-CAM marks one blob on the
+show are tested below. The two image methods disagree: Grad-CAM marks one blob on the
 lesion, while integrated gradients spreads isolated pixels over the lesion and the surrounding skin.
 And in all eight cases, attention rollout gives its largest weight to the closing full stop, with a
 similar profile over the remaining words of every sentence.
@@ -262,7 +299,7 @@ blurred copy of the image, and tracks the probability of the predicted class. In
 the blurred image and restores the highest-ranked patches first. Text attributions are ranked over
 content tokens, and a removed token is hidden from attention. Mean ± sd over the three fusion models:
 
-| Method                     | Deletion AUC (lower is better) | Insertion AUC (higher is better) | vs random: deletion / insertion | Attribution in lesion | Peak in lesion | Gini |
+| Method                     | Deletion AUC (lower is better) | Insertion AUC (higher is better) | vs random: deletion / insertion | Share in lesion       | Peak in lesion | Gini |
 | -------------------------- | -----------------------------: | -------------------------------: | ------------------------------- | --------------------: | -------------: | ---: |
 | Grad-CAM                   |                0.5908 ± 0.0226 |                  0.6048 ± 0.0724 |                  better / worse |                   69% |            98% | 0.70 |
 | Integrated gradients       |                0.6432 ± 0.0389 |                  0.6456 ± 0.0381 |                  better / worse |                   27% |            46% | 0.36 |
@@ -271,20 +308,21 @@ content tokens, and a removed token is hidden from attention. Mean ± sd over th
 | Random attribution (text)  |                0.8934 ± 0.0118 |                  0.8945 ± 0.0107 |                         control |                     — |              — | 0.33 |
 
 "Better" or "worse" means the paired per-image difference from the control has a 95% interval that
-excludes zero on that side in all three seeds. A map without information puts 26% of its
-attribution inside the lesion, and its peak in the lesion 28% of the time.
+excludes zero on that side in all three seeds. A map without information puts 26.5% of its
+attribution inside the lesion and its peak there 26.5% of the time, the lesion's average share of
+the image.
 
 - **Grad-CAM marks a region the model needs, not one that suffices.** Deleting its top patches
   destroys the prediction faster than any other ranking. Restoring them first recovers it more
   slowly than restoring random patches, because the model also uses the skin around the lesion.
 - **Integrated gradients is barely better than random.** It helps on deletion, is worse on
-  insertion, and places attribution in the lesion at exactly the chance rate.
-- **Grad-CAM and integrated gradients disagree.** Their maps correlate at
-  0.12, and their top-10% regions overlap by
-  0.13 intersection over union, against 0.05 for two random maps
+  insertion, and places its attribution in the lesion at close to the chance rate.
+- **Grad-CAM and integrated gradients disagree.** Their maps correlate at 0.12, and their top-10%
+  regions overlap by 0.13 intersection over union, against 0.05 for two random maps
   ([`reports/method_agreement.csv`](reports/method_agreement.csv)).
 - **Rollout beats random on a signal that barely exists.** Hiding every content token lowers the
-  predicted-class probability only from 0.92 to 0.85, so the margins are about one hundredth of an AUC.
+  predicted-class probability only from 0.92 to 0.85, so the margins are about one hundredth of an
+  AUC.
 
 Deletion and insertion depend on what replaces a removed patch. With a mean-colour fill instead of
 the blur, Grad-CAM's deletion result holds, its insertion deficit shrinks and is no longer consistent
@@ -331,9 +369,42 @@ The full evidence and a verdict per method are in
 
 ![Grad-CAM and integrated-gradients maps of one image as the model is randomised](reports/figures/sanity_examples.png)
 
-## Setup
+## When explanations mislead
 
-Requires Python 3.11 and an NVIDIA GPU with a CUDA 12 capable driver.
+The full analysis, with every case discussed, is
+[`reports/misleading_explanations.md`](reports/misleading_explanations.md). It asks whether an
+explanation can warn a reader that a prediction is wrong. It explains all 1,497 test images with each
+fusion model and flags confident errors (wrong, probability of at least 0.9) whose Grad-CAM map looks
+as good as a correct one: the peak inside the lesion, and at least the median correct prediction's
+share of attribution inside it.
+
+![Four confidently wrong predictions whose Grad-CAM maps sit on the lesion](reports/figures/misleading_explanations.png)
+
+- **Plausible maps on confident errors are common.** Per model, 87 to 99 test predictions are
+  confidently wrong, and 41 to 47 of them (47%) have a map as well placed as a typical correct
+  prediction's, about the same share as for correct predictions (50%). 13 to 17 of these per model
+  are malignant lesions called benign.
+- **The map does not depend on the answer.** ISIC_0032936 is a melanoma called a nevus with
+  probability 0.9997, with 80% of Grad-CAM's map inside the lesion. Asked to explain *melanoma*
+  instead, Grad-CAM marks largely the same region (rank correlation 0.76). For all ten melanomas the
+  seed-42 model confidently calls nevi, that correlation is between 0.76 and 0.96.
+- **Confidence, not the explanation, carries the warning.** As an error detector, the model's
+  probability reaches an AUROC of 0.85. Grad-CAM's localisation reaches 0.53, and integrated
+  gradients 0.54. On confident errors, the cases confidence cannot flag, the explanation looks no
+  different from a correct one.
+
+A model retrained on shuffled labels, at chance on the true labels, still produces Grad-CAM maps
+correlating at 0.50 with the real model's. A heatmap on the lesion answers where the model looked,
+not whether it was right. The common claim that explanations make medical AI safe does not survive
+these measurements: on this model, the explanation carries almost no information about whether a
+prediction is wrong.
+
+![Distributions of confidence and of attribution inside the lesion for correct and wrong predictions](reports/figures/error_signals.png)
+
+## Reproducing the results
+
+Requires Python 3.11 and an NVIDIA GPU with a CUDA 12 capable driver. Download HAM10000 with its
+lesion segmentation masks and place it as described under [Dataset](#dataset). Then:
 
 ```
 make setup          # creates .venv and installs pinned dependencies with CUDA 12.6 PyTorch wheels
@@ -342,32 +413,56 @@ make test
 make data           # writes configs/splits.json, builds the image cache, writes dataset statistics
 make leakage-demo   # grouped versus naive split comparison
 make train          # baselines and fusion model, three seeds each
-make eval           # explanation figures
+make eval           # explanation figures, faithfulness, sanity checks, misleading explanations
+make report         # the final comparison table, reports/results.csv
 ```
 
 `make setup` calls `python3.11` (`py -3.11` on Windows). Point it at a different interpreter with
 `make setup PYTHON=/path/to/python3.11`.
 
 `make data` decodes and resizes every image once on the GPU and caches the result under
-`data/processed/` (about 1.5 GB). Training then runs from GPU memory with no data-loading workers,
-which keeps CPU load low. `make lint` and `make test` need neither the dataset nor a GPU.
+`data/processed/` (about 1.5 GB). Training and evaluation then run from GPU memory with no
+data-loading workers, which keeps CPU load low. `make lint` and `make test` need neither the dataset
+nor a GPU. On an RTX 3090, `make train` takes about 35 minutes and `make eval` about 30, more than
+half of it the sanity checks, which retrain three models on shuffled labels. `make eval` needs the
+checkpoints written by `make train`.
 
-| Target              | Purpose                                                               |
-| ------------------- | --------------------------------------------------------------------- |
-| `make setup`        | create the virtual environment and install dependencies               |
-| `make test`         | run the test suite                                                    |
-| `make lint`         | ruff lint and format check                                            |
-| `make format`       | apply ruff formatting and autofixes                                   |
-| `make data`         | lesion-grouped splits, image cache, dataset statistics, text examples |
-| `make leakage-demo` | train under grouped and naive splits and compare                      |
-| `make train`        | train and evaluate the baselines and the fusion model                 |
-| `make eval`         | explanation figures (faithfulness and sanity checks to follow)        |
-| `make report`       | assemble `reports/` (not implemented yet)                             |
+| Target              | Purpose                                                                   |
+| ------------------- | ------------------------------------------------------------------------- |
+| `make setup`        | create the virtual environment and install dependencies                   |
+| `make test`         | run the test suite                                                        |
+| `make lint`         | ruff lint and format check                                                |
+| `make format`       | apply ruff formatting and autofixes                                       |
+| `make data`         | lesion-grouped splits, image cache, dataset statistics, text examples     |
+| `make leakage-demo` | train under grouped and naive splits and compare                          |
+| `make train`        | train and evaluate the baselines and the fusion model                     |
+| `make eval`         | explanation figures, faithfulness, sanity checks, misleading explanations |
+| `make report`       | export the final model comparison to `reports/results.csv`                |
 
-Browse logged runs with `mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`.
+Every experiment reads [`configs/default.yaml`](configs/default.yaml), seeds `random`, NumPy, and
+PyTorch from it, and copies it into its run directory. Training runs are logged to a local MLflow
+store; browse them with `mlflow ui --backend-store-uri sqlite:///mlruns/mlflow.db`. Non-obvious
+choices are logged with their reasons in [`DECISIONS.md`](DECISIONS.md), and the model is described
+in [`reports/model_card.md`](reports/model_card.md).
 
-All settings live in [`configs/default.yaml`](configs/default.yaml). Non-obvious choices are
-logged with their reasons in [`DECISIONS.md`](DECISIONS.md).
+## Limitations
+
+- **The text is synthetic.** It is templated from three metadata fields and says nothing about
+  real clinical notes. The fusion results say only that this template adds nothing to the image.
+- **One dataset, two clinics, mostly light skin.** HAM10000 comes from clinics in Vienna and
+  Queensland and does not record skin tone. Its images are overwhelmingly of light skin, so nothing
+  here describes performance on darker skin ([`reports/model_card.md`](reports/model_card.md)).
+- **Explanation verdicts are specific to this setup.** One architecture, three training seeds,
+  500 test images for faithfulness and 200 for the sanity checks. The similarity threshold of 0.5
+  is a convention fixed in advance, and Grad-CAM's label-randomisation result sits right at it.
+- **Deletion and insertion perturb images out of distribution.** Blurred or mean-colour patches are
+  inputs the model never saw in training, so part of any faithfulness score measures the model's
+  response to the perturbation itself. The reference check shows which conclusions depend on it.
+- **"Plausible" is operationalised, not rated.** Localisation is measured against the dataset's
+  lesion segmentations, and the misleading-explanation rule was defined in code, not by
+  dermatologists. No reader study was run.
+- **Images are squashed, not cropped,** from 4:3 to 1:1, so lesion shapes are distorted identically
+  in training and evaluation.
 
 ## License
 
