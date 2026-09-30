@@ -17,7 +17,7 @@ seed,check,method,step,layer,rank_correlation,top_overlap,collapsed,images
 42,model_randomisation,grad_cam,7,image_encoder.features.4,0.2073,0.0910,0.0000,200
 42,model_randomisation,integrated_gradients,7,image_encoder.features.4,0.4278,0.1032,0.0000,200
 42,model_randomisation,grad_cam,8,image_encoder.features.3,-0.0287,0.0363,0.0000,200
-42,model_randomisation,integrated_gradients,8,image_encoder.features.3,0.4951,0.1308,0.0000,200
+42,model_randomisation,integrated_gradients,8,image_encoder.features.3,0.4951,0.1309,0.0000,200
 42,model_randomisation,grad_cam,9,image_encoder.features.2,0.0442,0.0562,0.0000,200
 42,model_randomisation,integrated_gradients,9,image_encoder.features.2,0.5514,0.1678,0.0000,200
 42,model_randomisation,grad_cam,10,image_encoder.features.1,0.1948,0.1137,0.0000,200
